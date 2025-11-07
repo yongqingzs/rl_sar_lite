@@ -29,6 +29,7 @@ Support List:
 |Robot Name (rname:=)|Pre-Trained Policy|Gazebo|Mujoco|Real|
 |-|-|-|-|-|
 |Unitree-A1 (a1)|legged_gym (IsaacGym)|✅|❌|✅|
+|Unitree-Go1 (Go1)|legged_gym (IsaacGym)|✅|❌|✅|
 |Unitree-Go2 (go2)|himloco (IsaacGym)</br>robot_lab (IsaacSim)|✅|✅|✅</br>✅|
 |Unitree-Go2W (go2w)|robot_lab (IsaacSim)|✅|✅|✅|
 |Unitree-B2 (b2)|robot_lab (IsaacSim)|✅|✅|⚪|
