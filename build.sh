@@ -115,11 +115,11 @@ run_ros_build() {
         if [[ "$ROS_DISTRO" == "noetic" ]]; then
             print_header "[Using catkin build]"
             print_info "Building all packages..."
-            catkin build
+            catkin build -j4
         else
             print_header "[Using colcon build]"
             print_info "Building all packages..."
-            colcon build --merge-install --symlink-install
+            MAKEFLAGS="-j4" colcon build --merge-install --symlink-install
         fi
     else
         if [[ "$ROS_DISTRO" == "noetic" ]]; then
@@ -129,7 +129,7 @@ run_ros_build() {
         else
             print_header "[Using colcon build]"
             print_info "Building specific packages: $package_list"
-            colcon build --merge-install --symlink-install --packages-select $package_list
+            MAKEFLAGS="-j4" colcon build --merge-install --symlink-install --packages-select $package_list
         fi
     fi
 

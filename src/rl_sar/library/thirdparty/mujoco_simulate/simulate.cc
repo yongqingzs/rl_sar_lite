@@ -2341,6 +2341,20 @@ void Simulate::LoadOnRenderThread() {
     }
   }
 
+  if (this->m_->nkey > 0) {
+    mj_resetDataKeyframe(this->m_, this->d_, 0);  // 应用索引 0 的 keyframe（"home"）
+    mj_forward(this->m_, this->d_);
+
+    // 重新同步 qpos_ 和 qpos_prev_ 以反映 keyframe
+    std::memcpy(qpos_.data(), this->d_->qpos, sizeof(this->d_->qpos[0]) * this->m_->nq);
+    qpos_prev_ = qpos_;
+
+    // 重新同步 ctrl_ 和 ctrl_prev_（如果 keyframe 也设置了 ctrl）
+    std::memcpy(ctrl_.data(), this->d_->ctrl, sizeof(this->d_->ctrl[0]) * this->m_->nu);
+    ctrl_prev_ = ctrl_;
+  }
+
+
   this->mnew_ = nullptr;
   this->dnew_ = nullptr;
 }
