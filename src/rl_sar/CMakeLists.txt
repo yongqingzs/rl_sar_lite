@@ -104,6 +104,7 @@ if(NOT USE_CMAKE)
         find_package(ros_gz_interfaces REQUIRED)
         find_package(std_srvs REQUIRED)
         find_package(geometry_msgs REQUIRED)
+        ament_package()
         find_package(gz-sim8 REQUIRED) # 确保 gz-sim8 的 CMake 配置可被找到
         add_compile_options(-Wall -Wextra -Wpedantic)
     endif()

@@ -359,12 +359,21 @@ main() {
             -c|--clean) clean_mode=true; shift ;;
             -m|--cmake) cmake_mode=true; shift ;;
             -mj|--mujoco) cmake_mode=true; mujoco_mode=true; shift ;;
+            -do|--download-only) download_only=true; shift ;;
             -h|--help) show_usage; exit 0 ;;
             --) shift; packages+=("$@"); break ;;
             -*) print_error "Unknown option: $1"; show_usage; exit 1 ;;
             *) packages+=("$1"); shift ;;
         esac
     done
+
+    # Download and setup dependencie
+    if [ "$download_only" = true ]; then
+        setup_inference_runtime
+        setup_robot_descriptions
+        setup_mujoco
+        exit 0
+    fi
 
     # Handle MuJoCo build mode
     if [ "$mujoco_mode" = true ]; then
