@@ -29,7 +29,7 @@ public:
             // fsm_command->motor_command.q[i] = fsm_state->motor_state.q[i];
             fsm_command->motor_command.dq[i] = 0;
             fsm_command->motor_command.kp[i] = 0;
-            fsm_command->motor_command.kd[i] = 3;
+            fsm_command->motor_command.kd[i] = 2;
             fsm_command->motor_command.tau[i] = 0;
         }
     }
@@ -120,6 +120,12 @@ public:
     RLFSMStateGetDown(RL *rl) : RLFSMState(*rl, "RLFSMStateGetDown") {}
 
     float percent_getdown = 0.0f;
+    std::vector<float> pre_down_pos = {
+        0.28, 1.19, -2.787,
+        -0.28, 1.19, -2.787,
+        0.28, 1.19, -2.787,
+        -0.28, 1.19, -2.787
+    };
 
     void Enter() override
     {
@@ -129,7 +135,7 @@ public:
 
     void Run() override
     {
-        Interpolate(percent_getdown, rl.now_state.motor_state.q, rl.start_state.motor_state.q, 2.0f, "Getting down", true);
+        Interpolate(percent_getdown, rl.now_state.motor_state.q, pre_down_pos, 2.0f, "Getting down", true);
     }
 
     void Exit() override {}
@@ -162,6 +168,13 @@ public:
 
         // read params from yaml
         rl.config_name = "legged_gym";
+        std::string model_folder = rl.params.Get<std::string>("model_folder");
+        std::cout << LOGGER::INFO << "model_folder: " << model_folder << std::endl;
+        if (!model_folder.empty()) {
+            rl.config_name = model_folder;
+        }
+        std::cout << LOGGER::NOTE << "true config_name: " << rl.config_name << std::endl;
+
         std::string robot_config_path = rl.robot_name + "/" + rl.config_name;
         try
         {

@@ -28,6 +28,10 @@
 #include <geometry_msgs/msg/twist.hpp>
 #endif
 
+#if defined(CONTROL_EXTRA) && defined(USE_ROS)
+#include <control_input_msgs/msg/inputs.hpp>
+#endif
+
 #include "matplotlibcpp.h"
 namespace plt = matplotlibcpp;
 
@@ -71,6 +75,7 @@ private:
     FDSC::lowState fdsc_low_state;
     std::vector<std::vector<uint8_t>> fdsc_data_buffer;
     std::mutex fdsc_data_mutex_;  // Mutex to protect fdsc_data_buffer
+    int last_command_ = 0;
 
     // print timing
     std::chrono::steady_clock::time_point last_print_time;
@@ -90,6 +95,12 @@ private:
     geometry_msgs::msg::Twist cmd_vel;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_subscriber;
     void CmdvelCallback(const geometry_msgs::msg::Twist::SharedPtr msg);
+#endif
+
+#if defined(CONTROL_EXTRA) && defined(USE_ROS)
+    control_input_msgs::msg::Inputs control_input;
+    rclcpp::Subscription<control_input_msgs::msg::Inputs>::SharedPtr control_input_subscriber;
+    void ControlInputsCallback(const control_input_msgs::msg::Inputs::SharedPtr msg);
 #endif
 };
 

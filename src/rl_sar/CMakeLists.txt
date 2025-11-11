@@ -21,6 +21,12 @@ if(NOT USE_CMAKE)
     elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble|jazzy")
         add_compile_definitions(USE_ROS2)
     endif()
+
+    if($ENV{ROS_DISTRO} MATCHES "jazzy")
+        set(CONTROL_EXTRA ON)
+        add_compile_definitions(CONTROL_EXTRA)
+        add_compile_definitions(USE_ROS)
+    endif()
 else()
     message(WARNING "ROS_DISTRO not set, assuming non-ROS mode")
     add_compile_definitions(USE_CMAKE)
@@ -99,10 +105,12 @@ if(NOT USE_CMAKE)
         find_package(std_srvs REQUIRED)
         find_package(geometry_msgs REQUIRED)
         find_package(gz-sim8 REQUIRED) # 确保 gz-sim8 的 CMake 配置可被找到
-        ament_package()
         add_compile_options(-Wall -Wextra -Wpedantic)
     endif()
 
+    if (CONTROL_EXTRA)
+        find_package(control_input_msgs REQUIRED)
+    endif()
 endif()
 
 # Inference Runtime
@@ -529,6 +537,9 @@ if(SYSTEM_TYPE STREQUAL "Linux")
                 rclcpp
                 geometry_msgs
             )
+            if (CONTROL_EXTRA)
+                ament_target_dependencies(rl_real_go1 control_input_msgs)
+            endif()
             install(TARGETS rl_real_go1 DESTINATION lib/${PROJECT_NAME})
         endif()
     endif()

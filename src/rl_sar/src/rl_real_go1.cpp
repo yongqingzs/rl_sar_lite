@@ -18,6 +18,13 @@ RL_Real::RL_Real(int argc, char **argv)
     );
 #endif
 
+#if defined(CONTROL_EXTRA) && defined(USE_ROS)
+    this->control_input_subscriber = ros2_node->create_subscription<control_input_msgs::msg::Inputs>(
+        "/control_input", 10,
+        [this] (const control_input_msgs::msg::Inputs::SharedPtr msg) {this->ControlInputsCallback(msg);}
+    );
+#endif
+
     // read params from yaml
     this->ang_vel_axis = "body";
     this->robot_name = "go1";
@@ -136,6 +143,30 @@ void RL_Real::GetState(RobotState<float> *state)
         }
     }
     
+#if defined(CONTROL_EXTRA) && defined(USE_ROS)
+    this->control.x = this->control_input.ly;
+    this->control.y = -this->control_input.lx;
+    this->control.yaw = -this->control_input.rx;
+    if (last_command_ != this->control_input.command)
+    {
+        last_command_ = this->control_input.command;
+        std::cout << LOGGER::INFO << "Control command changed to: " << last_command_ << std::endl;
+
+        // int cmd = std::max(0, last_command_ - 2);
+        int cmd = last_command_;
+        if (cmd == 1)
+            this->control.current_keyboard = Input::Keyboard::Num9;
+        else if (cmd == 2)
+            this->control.current_keyboard = Input::Keyboard::Num0;
+        else if (cmd == 3)
+            this->control.current_keyboard = Input::Keyboard::Num1;
+
+        this->control.x = 0;
+        this->control.y = 0;
+        this->control.yaw = 0;
+    }
+#endif
+
     // Parse data outside of mutex lock
     if (!latest_data.empty())
     {
@@ -200,10 +231,6 @@ void RL_Real::GetState(RobotState<float> *state)
     if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.left) this->control.SetGamepad(Input::Gamepad::RB_DPadLeft);
     if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.right) this->control.SetGamepad(Input::Gamepad::RB_DPadRight);
     if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.R1) this->control.SetGamepad(Input::Gamepad::LB_RB);
-
-    // this->control.x = this->fdsc_low_state.wirelessdata.ly;
-    // this->control.y = -this->fdsc_low_state.wirelessdata.lx;
-    // this->control.yaw = -this->fdsc_low_state.wirelessdata.rx;
 
     // IMU data - free_dog_sdk uses [w, x, y, z] format
     state->imu.quaternion[0] = this->fdsc_low_state.imu_quaternion[0]; // w
@@ -411,6 +438,13 @@ void RL_Real::CmdvelCallback(
 )
 {
     this->cmd_vel = *msg;
+}
+#endif
+
+#if defined(CONTROL_EXTRA) && defined(USE_ROS)
+void RL_Real::ControlInputsCallback(const control_input_msgs::msg::Inputs::SharedPtr msg)
+{
+    this->control_input = *msg;
 }
 #endif
 
