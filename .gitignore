@@ -46,3 +46,13 @@ rl_sar_zoo
 legged_docs/
 
 tmp/
+
+**.onnx
+
+# policies
+syj_policy_**/
+zxb_policy_**/
+cc_policy_**/
+no_foot_**/
+himloco_**/
+my_unitree_**/

@@ -165,6 +165,79 @@ std::vector<float> RL::ComputeObservation()
             std::vector<float> phase_vec = {phase};
             obs_list.push_back(phase_vec);
         }
+        // ============= GO2_Trot_2 Observations =============
+        else if (observation == "command_input")
+        {
+            // command_input (5维): sin(phase), cos(phase), x_vel_cmd, y_vel_cmd, yaw_vel_cmd
+            float cycle_time = this->params.Get<float>("cycle_time", 0.5f);
+            float dt = this->params.Get<float>("dt");
+            int decimation = this->params.Get<int>("decimation");
+            float motion_time = this->episode_length_buf * dt * decimation;
+            float phase = std::fmod(motion_time, cycle_time) / cycle_time;
+            
+            float sin_phase = std::sin(2.0f * 3.14159265f * phase);
+            float cos_phase = std::cos(2.0f * 3.14159265f * phase);
+            
+            auto commands_scale = this->params.Get<std::vector<float>>("commands_scale");
+            std::vector<float> scaled_commands = this->obs.commands * commands_scale;
+            
+            std::vector<float> command_input = {
+                sin_phase,
+                cos_phase,
+                scaled_commands[0],  // x_vel_cmd
+                scaled_commands[1],  // y_vel_cmd
+                scaled_commands[2]   // yaw_vel_cmd
+            };
+            obs_list.push_back(command_input);
+        }
+        else if (observation == "obs_imu")
+        {
+            // obs_imu (6维): 角速度(3维) + 欧拉角(3维)
+            std::vector<float> ang_vel_scaled;
+            if (this->ang_vel_axis == "body")
+            {
+                ang_vel_scaled = this->obs.ang_vel * this->params.Get<float>("ang_vel_scale");
+            }
+            else if (this->ang_vel_axis == "world")
+            {
+                ang_vel_scaled = QuatRotateInverse(this->obs.base_quat, this->obs.ang_vel) * this->params.Get<float>("ang_vel_scale");
+            }
+            else
+            {
+                ang_vel_scaled = this->obs.ang_vel * this->params.Get<float>("ang_vel_scale");
+            }
+            
+            // Convert quaternion to Euler angles
+            std::vector<float> euler = QuaternionToEuler(this->obs.base_quat);
+            // Normalize euler angles to [-pi, pi]
+            for (size_t i = 0; i < euler.size(); ++i)
+            {
+                if (euler[i] > 3.14159265f)
+                    euler[i] -= 2.0f * 3.14159265f;
+            }
+            std::vector<float> euler_scaled = euler * this->params.Get<float>("quat_scale", 1.0f);
+            
+            std::vector<float> obs_imu;
+            obs_imu.insert(obs_imu.end(), ang_vel_scaled.begin(), ang_vel_scaled.end());
+            obs_imu.insert(obs_imu.end(), euler_scaled.begin(), euler_scaled.end());
+            obs_list.push_back(obs_imu);
+        }
+        else if (observation == "obs_motor")
+        {
+            // obs_motor (24维): (关节位置 - 默认位置)(12维) + 关节速度(12维)
+            std::vector<float> dof_pos_rel = this->obs.dof_pos - this->params.Get<std::vector<float>>("default_dof_pos");
+            for (int i : this->params.Get<std::vector<int>>("wheel_indices"))
+            {
+                dof_pos_rel[i] = 0.0f;
+            }
+            std::vector<float> dof_pos_scaled = dof_pos_rel * this->params.Get<float>("dof_pos_scale");
+            std::vector<float> dof_vel_scaled = this->obs.dof_vel * this->params.Get<float>("dof_vel_scale");
+            
+            std::vector<float> obs_motor;
+            obs_motor.insert(obs_motor.end(), dof_pos_scaled.begin(), dof_pos_scaled.end());
+            obs_motor.insert(obs_motor.end(), dof_vel_scaled.begin(), dof_vel_scaled.end());
+            obs_list.push_back(obs_motor);
+        }
     }
 
     this->obs_dims.clear();
