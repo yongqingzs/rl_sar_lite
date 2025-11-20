@@ -99,10 +99,39 @@ download_libtorch() {
             ;;
         Linux)
             if [ "${ARCH_TYPE}" = "aarch64" ]; then
-                print_error "ARM64 Linux detected but not identified as Jetson"
-                print_error "LibTorch prebuilt binaries for generic ARM64 Linux are not available"
-                print_info "If this is a Jetson device, please check /etc/nv_tegra_release"
-                exit 1
+                # Use local libtorch-arm64-2_3_0.zip
+                local local_archive="${PROJECT_ROOT}/library/data/libtorch-arm64-2_3_0.zip"
+                if [ ! -f "${local_archive}" ]; then
+                    print_error "Local LibTorch archive not found: ${local_archive}"
+                    exit 1
+                fi
+                print_info "Using local LibTorch archive for ARM64: ${local_archive}"
+                
+                # Extract directly to temp dir
+                local temp_dir="${MODEL_INTERFACE_DIR}/temp_extract"
+                rm -rf "${temp_dir}"
+                mkdir -p "${temp_dir}"
+                
+                unzip -o -q "${local_archive}" -d "${temp_dir}" || {
+                    print_error "Extraction failed"
+                    rm -rf "${temp_dir}"
+                    exit 1
+                }
+                
+                # Move extracted files
+                if [ -d "${temp_dir}/libtorch" ]; then
+                    mv "${temp_dir}/libtorch" "${LIBTORCH_DIR}"
+                else
+                    print_error "Incorrect directory structure after extraction"
+                    rm -rf "${temp_dir}"
+                    exit 1
+                fi
+                
+                # Cleanup
+                rm -rf "${temp_dir}"
+                
+                print_success "LibTorch ${LIBTORCH_VERSION} installed from local archive"
+                return 0
             fi
             url="https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-${LIBTORCH_VERSION}%2Bcpu.zip"
             archive_name="libtorch-cxx11-abi-shared-with-deps-${LIBTORCH_VERSION}+cpu.zip"

@@ -48,6 +48,7 @@ legged_docs/
 tmp/
 
 **.onnx
+!libtorch-arm64-2_3_0.zip
 
 # policies
 syj_policy_**/
