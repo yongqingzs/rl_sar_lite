@@ -26,6 +26,7 @@
 #elif defined(USE_ROS2) && defined(USE_ROS)
 #include <rclcpp/rclcpp.hpp>
 #include <geometry_msgs/msg/twist.hpp>
+#include <realtime_tools/realtime_buffer.hpp>
 #endif
 
 #if defined(CONTROL_EXTRA) && defined(USE_ROS)
@@ -92,6 +93,10 @@ private:
     ros::Subscriber cmd_vel_subscriber;
     void CmdvelCallback(const geometry_msgs::Twist::ConstPtr &msg);
 #elif defined(USE_ROS2) && defined(USE_ROS)
+    // realtime buffer for cmd_vel
+    realtime_tools::RealtimeBuffer<geometry_msgs::msg::Twist> buffer_;
+    int twist_count = 0;
+
     geometry_msgs::msg::Twist cmd_vel;
     rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_subscriber;
     void CmdvelCallback(const geometry_msgs::msg::Twist::SharedPtr msg);

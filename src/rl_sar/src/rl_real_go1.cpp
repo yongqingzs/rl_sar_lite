@@ -13,7 +13,7 @@ RL_Real::RL_Real(int argc, char **argv)
 #elif defined(USE_ROS2) && defined(USE_ROS)
     ros2_node = std::make_shared<rclcpp::Node>("rl_real_node");
     this->cmd_vel_subscriber = ros2_node->create_subscription<geometry_msgs::msg::Twist>(
-        "/cmd_vel", rclcpp::SystemDefaultsQoS(),
+        "/cmd_vel", 10,
         [this] (const geometry_msgs::msg::Twist::SharedPtr msg) {this->CmdvelCallback(msg);}
     );
 #endif
@@ -331,13 +331,24 @@ void RL_Real::RunModel()
     {
         this->episode_length_buf += 1;
         this->obs.ang_vel = this->robot_state.imu.gyroscope;
-        this->obs.commands = {this->control.x, this->control.y, this->control.yaw};
-#if !defined(USE_CMAKE) && defined(USE_ROS)
-        if (this->control.navigation_mode)
+#if defined(USE_ROS2) && defined(USE_ROS)
+        if (buffer_.readFromRT() == nullptr || twist_count <= 0)
         {
-            this->obs.commands = {(float)this->cmd_vel.linear.x, (float)this->cmd_vel.linear.y, (float)this->cmd_vel.angular.z};
-
+            this->obs.commands = {this->control.x, this->control.y, this->control.yaw};
         }
+        else
+        {
+            const geometry_msgs::msg::Twist twist = *buffer_.readFromRT();
+            std::cout << std::endl << "twist: " << twist.linear.x << ", " << twist.linear.y << ", " << twist.angular.z << std::endl;
+            this->obs.commands = {(float)twist.linear.x, (float)twist.linear.y, (float)twist.angular.z};
+            twist_count--;
+            if (twist_count <= 0)
+            {
+                buffer_.reset();
+            }
+        }
+#else
+        this->obs.commands = {this->control.x, this->control.y, this->control.yaw};
 #endif
         this->obs.base_quat = this->robot_state.imu.quaternion;
         this->obs.dof_pos = this->robot_state.motor_state.q;
@@ -437,6 +448,10 @@ void RL_Real::CmdvelCallback(
 #endif
 )
 {
+#if defined(USE_ROS2) && defined(USE_ROS)
+    buffer_.writeFromNonRT(*msg);
+    twist_count = 200 / 5.0;
+#endif
     this->cmd_vel = *msg;
 }
 #endif

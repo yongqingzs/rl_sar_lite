@@ -20,6 +20,7 @@
     <depend>joint_state_controller</depend>
     <depend>robot_state_publisher</depend>
     <depend>rospy</depend>
+    <depend>realtime_tools</depend>
 
     <export>
         <build_type>ament_cmake</build_type>

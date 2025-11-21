@@ -88,6 +88,7 @@ if(NOT USE_CMAKE)
         find_package(gazebo_msgs REQUIRED)
         find_package(std_srvs REQUIRED)
         find_package(geometry_msgs REQUIRED)
+        find_package(realtime_tools REQUIRED)
         ament_package()
         add_compile_options(${GAZEBO_CXX_FLAGS})
         find_package(gazebo REQUIRED)
@@ -104,6 +105,7 @@ if(NOT USE_CMAKE)
         find_package(ros_gz_interfaces REQUIRED)
         find_package(std_srvs REQUIRED)
         find_package(geometry_msgs REQUIRED)
+        find_package(realtime_tools REQUIRED)
         ament_package()
         find_package(gz-sim8 REQUIRED) # 确保 gz-sim8 的 CMake 配置可被找到
         add_compile_options(-Wall -Wextra -Wpedantic)
@@ -537,6 +539,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             ament_target_dependencies(rl_real_go1
                 rclcpp
                 geometry_msgs
+                realtime_tools
             )
             if (CONTROL_EXTRA)
                 ament_target_dependencies(rl_real_go1 control_input_msgs)
