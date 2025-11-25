@@ -1,9 +1,9 @@
 /*
- * Copyright (c) 2024-2025 Ziqi Fan
  * SPDX-License-Identifier: Apache-2.0
  */
 
 #include "hardware_interface_free_dog_sdk.hpp"
+#include "loop.hpp"
 #include <iostream>
 #include <cstring>
 
@@ -27,6 +27,11 @@ bool HardwareInterfaceFreeDogSdk::Initialize()
         std::vector<uint8_t> init_cmd = low_cmd_.buildCmd(false);
         fdsc_conn_->send(init_cmd);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        
+        // Create LoopFunc instances for communication loops
+        recv_loop_ = std::make_shared<LoopFunc>("FreeDogSDK_Recv", 0.002, std::bind(&HardwareInterfaceFreeDogSdk::RecvLoop, this), 3);
+        send_loop_ = std::make_shared<LoopFunc>("FreeDogSDK_Send", 0.002, std::bind(&HardwareInterfaceFreeDogSdk::SendLoop, this), 3);
+        
         ready_ = true;
         std::cout << "[FreeDogSDK] Hardware interface initialized with settings: " 
                   << connection_settings_ << std::endl;
@@ -47,8 +52,12 @@ void HardwareInterfaceFreeDogSdk::Start()
     
     running_ = true;
     
-    recv_thread_ = std::thread(&HardwareInterfaceFreeDogSdk::RecvLoop, this);
-    send_thread_ = std::thread(&HardwareInterfaceFreeDogSdk::SendLoop, this);
+    if (recv_loop_) {
+        recv_loop_->start();
+    }
+    if (send_loop_) {
+        send_loop_->start();
+    }
     
     std::cout << "[FreeDogSDK] Communication loops started" << std::endl;
 }
@@ -62,11 +71,11 @@ void HardwareInterfaceFreeDogSdk::Stop()
     running_ = false;
     ready_ = false;
     
-    if (recv_thread_.joinable()) {
-        recv_thread_.join();
+    if (recv_loop_) {
+        recv_loop_->shutdown();
     }
-    if (send_thread_.joinable()) {
-        send_thread_.join();
+    if (send_loop_) {
+        send_loop_->shutdown();
     }
     
     if (fdsc_conn_) {
@@ -172,31 +181,25 @@ bool HardwareInterfaceFreeDogSdk::IsReady() const
 
 void HardwareInterfaceFreeDogSdk::RecvLoop()
 {
-    while (running_) {
-        if (fdsc_conn_) {
-            std::vector<std::vector<uint8_t>> dataall;
-            fdsc_conn_->getData(dataall);
-            
-            if (!dataall.empty()) {
-                std::lock_guard<std::mutex> lock(buffer_mutex_);
-                data_buffer_ = std::move(dataall);
-            }
+    if (fdsc_conn_) {
+        std::vector<std::vector<uint8_t>> dataall;
+        fdsc_conn_->getData(dataall);
+        
+        if (!dataall.empty()) {
+            std::lock_guard<std::mutex> lock(buffer_mutex_);
+            data_buffer_ = std::move(dataall);
         }
-        std::this_thread::sleep_for(std::chrono::microseconds(500));
     }
 }
 
 void HardwareInterfaceFreeDogSdk::SendLoop()
 {
-    while (running_) {
-        if (fdsc_conn_) {
-            std::vector<uint8_t> cmd_bytes;
-            {
-                std::lock_guard<std::mutex> lock(cmd_mutex_);
-                cmd_bytes = low_cmd_.buildCmd(false);
-            }
-            fdsc_conn_->send(cmd_bytes);
+    if (fdsc_conn_) {
+        std::vector<uint8_t> cmd_bytes;
+        {
+            std::lock_guard<std::mutex> lock(cmd_mutex_);
+            cmd_bytes = low_cmd_.buildCmd(false);
         }
-        std::this_thread::sleep_for(std::chrono::microseconds(500));
+        fdsc_conn_->send(cmd_bytes);
     }
 }

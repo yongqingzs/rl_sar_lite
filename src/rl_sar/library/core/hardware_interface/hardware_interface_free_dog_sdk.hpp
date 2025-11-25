@@ -1,5 +1,4 @@
 /*
- * Copyright (c) 2024-2025 Ziqi Fan
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -8,7 +7,8 @@
 
 #include "hardware_interface_base.hpp"
 #include "fdsc_utils/free_dog_sdk_h.hpp"
-#include <thread>
+#include "loop.hpp"
+#include <memory>
 #include <atomic>
 #include <mutex>
 
@@ -56,8 +56,8 @@ private:
     
     std::vector<std::vector<uint8_t>> data_buffer_;
     
-    std::thread recv_thread_;
-    std::thread send_thread_;
+    std::shared_ptr<LoopFunc> recv_loop_;
+    std::shared_ptr<LoopFunc> send_loop_;
     
     std::atomic<bool> running_{false};
     std::atomic<bool> ready_{false};

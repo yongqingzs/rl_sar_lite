@@ -56,13 +56,9 @@ RL_Real::RL_Real(int argc, char **argv)
     this->InitControl();
 
     // loop
-    this->loop_udpSend = std::make_shared<LoopFunc>("loop_udpSend", 0.002, std::bind(&RL_Real::UDPSend, this), 3);
-    this->loop_udpRecv = std::make_shared<LoopFunc>("loop_udpRecv", 0.002, std::bind(&RL_Real::UDPRecv, this), 3);
     this->loop_keyboard = std::make_shared<LoopFunc>("loop_keyboard", 0.05, std::bind(&RL_Real::KeyboardInterface, this));
     this->loop_control = std::make_shared<LoopFunc>("loop_control", this->params.Get<float>("dt"), std::bind(&RL_Real::RobotControl, this));
     this->loop_rl = std::make_shared<LoopFunc>("loop_rl", this->params.Get<float>("dt") * this->params.Get<int>("decimation"), std::bind(&RL_Real::RunModel, this));
-    this->loop_udpSend->start();
-    this->loop_udpRecv->start();
     this->loop_keyboard->start();
     this->loop_control->start();
     this->loop_rl->start();
@@ -84,8 +80,6 @@ RL_Real::RL_Real(int argc, char **argv)
 RL_Real::~RL_Real()
 {
     // Shutdown loops first
-    this->loop_udpSend->shutdown();
-    this->loop_udpRecv->shutdown();
     this->loop_keyboard->shutdown();
     this->loop_control->shutdown();
     this->loop_rl->shutdown();
@@ -147,18 +141,6 @@ void RL_Real::InitializeHardwareInterface()
         std::cerr << LOGGER::ERROR << "Hardware interface failed to become ready!" << std::endl;
         std::exit(EXIT_FAILURE);
     }
-}
-
-void RL_Real::UDPSend()
-{
-    // This function is now a no-op since SetCommand handles sending
-    // Kept for backward compatibility with loop structure
-}
-
-void RL_Real::UDPRecv()
-{
-    // This function is now a no-op since GetState handles receiving
-    // Kept for backward compatibility with loop structure
 }
 
 void RL_Real::GetState(RobotState<float> *state)

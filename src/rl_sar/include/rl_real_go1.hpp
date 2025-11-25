@@ -64,8 +64,6 @@ private:
     // loop
     std::shared_ptr<LoopFunc> loop_keyboard;
     std::shared_ptr<LoopFunc> loop_control;
-    std::shared_ptr<LoopFunc> loop_udpSend;
-    std::shared_ptr<LoopFunc> loop_udpRecv;
     std::shared_ptr<LoopFunc> loop_rl;
     std::shared_ptr<LoopFunc> loop_plot;
 
@@ -85,8 +83,6 @@ private:
     std::unique_ptr<HardwareInterfaceBase> hardware_interface_;
     
     void InitializeHardwareInterface();
-    void UDPSend();  // For backward compatibility
-    void UDPRecv();  // For backward compatibility
 
     // print timing
     std::chrono::steady_clock::time_point last_print_time;
