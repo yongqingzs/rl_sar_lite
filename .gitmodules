@@ -16,3 +16,6 @@
 [submodule "src/rl_sar/library/thirdparty/robot_sdk/unitree/free_dog_sdk_cpp"]
 	path = src/rl_sar/library/thirdparty/robot_sdk/unitree/free_dog_sdk_cpp
 	url = https://github.com/yongqingzs/free_dog_sdk_cpp.git
+[submodule "src/rl_sar/library/thirdparty/robot_sdk/unitree/unitree_ros2"]
+	path = src/rl_sar/library/thirdparty/robot_sdk/unitree/unitree_ros2
+	url = https://github.com/unitreerobotics/unitree_ros2.git
