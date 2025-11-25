@@ -44,18 +44,11 @@ RL_Real::RL_Real(int argc, char **argv)
         std::cout << LOGGER::ERROR << "[FSM] No FSM registered for robot: " << this->robot_name << std::endl;
     }
 
-    // init free_dog_sdk connection
-    std::string connection_settings = "LOW_WIRED_DEFAULTS";  // Default to wired connection
-    this->fdsc_conn = std::make_shared<FDSC::UnitreeConnection>(connection_settings);
-    this->fdsc_conn->startRecv();
+    // Initialize hardware interface based on configuration
+    InitializeHardwareInterface();
     
     // Initialize print timing
     this->last_print_time = std::chrono::steady_clock::now();
-    
-    // Send initial command to establish connection
-    std::vector<uint8_t> init_cmd = this->fdsc_low_command.buildCmd(false);
-    this->fdsc_conn->send(init_cmd);
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // init robot
     this->InitJointNum(this->params.Get<int>("num_of_dofs"));
@@ -100,59 +93,87 @@ RL_Real::~RL_Real()
     this->loop_plot->shutdown();
 #endif
     
-    // Stop free_dog_sdk connection and wait for threads to finish
-    if (this->fdsc_conn)
-    {
-        this->fdsc_conn->stopRecv();
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        this->fdsc_conn.reset();
+    // Stop hardware interface
+    if (hardware_interface_) {
+        hardware_interface_->Stop();
     }
     
     std::cout << LOGGER::INFO << "RL_Real exit" << std::endl;
 }
 
+void RL_Real::InitializeHardwareInterface()
+{
+    // Read hardware protocol from configuration
+    std::string protocol_str = this->params.Get<std::string>("hardware_protocol", "free_dog_sdk");
+    
+    std::cout << LOGGER::INFO << "Initializing hardware interface: " << protocol_str << std::endl;
+    
+    if (protocol_str == "unitree_ros2") {
+#ifdef UNITREE_ROS2_AVAILABLE
+        hardware_protocol_ = HardwareProtocol::UNITREE_ROS2;
+        hardware_interface_ = std::make_unique<HardwareInterfaceUnitreeRos2>(ros2_node);
+        std::cout << LOGGER::INFO << "Using unitree_ros2 protocol" << std::endl;
+#else
+        std::cout << LOGGER::WARNING << "unitree_ros2 not available, falling back to free_dog_sdk" << std::endl;
+        hardware_protocol_ = HardwareProtocol::FREE_DOG_SDK;
+        hardware_interface_ = std::make_unique<HardwareInterfaceFreeDogSdk>();
+#endif
+    } else {
+        // Default to free_dog_sdk
+        hardware_protocol_ = HardwareProtocol::FREE_DOG_SDK;
+        hardware_interface_ = std::make_unique<HardwareInterfaceFreeDogSdk>();
+        std::cout << LOGGER::INFO << "Using free_dog_sdk protocol" << std::endl;
+    }
+    
+    // Initialize and start the hardware interface
+    if (!hardware_interface_->Initialize()) {
+        std::cerr << LOGGER::ERROR << "Failed to initialize hardware interface!" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    
+    hardware_interface_->Start();
+    
+    // Wait for hardware interface to be ready
+    std::cout << LOGGER::INFO << "Waiting for hardware interface to be ready..." << std::endl;
+    int retry_count = 0;
+    while (!hardware_interface_->IsReady() && retry_count < 50) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        retry_count++;
+    }
+    
+    if (hardware_interface_->IsReady()) {
+        std::cout << LOGGER::INFO << "Hardware interface ready!" << std::endl;
+    } else {
+        std::cerr << LOGGER::ERROR << "Hardware interface failed to become ready!" << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+}
+
 void RL_Real::UDPSend()
 {
-    std::vector<uint8_t> cmd_bytes = this->fdsc_low_command.buildCmd(false);
-    this->fdsc_conn->send(cmd_bytes);
+    // This function is now a no-op since SetCommand handles sending
+    // Kept for backward compatibility with loop structure
 }
 
 void RL_Real::UDPRecv()
 {
-    std::vector<std::vector<uint8_t>> dataall;
-    this->fdsc_conn->getData(dataall);
-    
-    if (!dataall.empty())
-    {
-        std::lock_guard<std::mutex> lock(this->fdsc_data_mutex_);
-        // Replace buffer with latest data to avoid accumulation
-        this->fdsc_data_buffer = std::move(dataall);
-    }
+    // This function is now a no-op since GetState handles receiving
+    // Kept for backward compatibility with loop structure
 }
 
 void RL_Real::GetState(RobotState<float> *state)
 {
-    // Get latest data from buffer with mutex protection
-    std::vector<uint8_t> latest_data;
-    {
-        std::lock_guard<std::mutex> lock(this->fdsc_data_mutex_);
-        if (!this->fdsc_data_buffer.empty())
-        {
-            latest_data = this->fdsc_data_buffer.back();
-            this->fdsc_data_buffer.clear();
-        }
-    }
-    
 #if defined(CONTROL_EXTRA) && defined(USE_ROS)
+    // Handle control input messages
     this->control.x = this->control_input.ly;
     this->control.y = -this->control_input.lx;
     this->control.yaw = -this->control_input.rx;
+    static int last_command_ = 0;
     if (last_command_ != this->control_input.command)
     {
         last_command_ = this->control_input.command;
         std::cout << LOGGER::INFO << "Control command changed to: " << last_command_ << std::endl;
 
-        // int cmd = std::max(0, last_command_ - 2);
         int cmd = last_command_;
         if (cmd == 1)
             this->control.current_keyboard = Input::Keyboard::Num9;
@@ -169,89 +190,35 @@ void RL_Real::GetState(RobotState<float> *state)
     }
 #endif
 
-    // Parse data outside of mutex lock
-    if (!latest_data.empty())
+    // Get state from hardware interface
+    std::vector<float> joint_positions, joint_velocities, joint_efforts;
+    std::vector<float> imu_quaternion, imu_gyroscope, imu_accelerometer;
+    
+    if (!hardware_interface_->GetState(
+        joint_positions, joint_velocities, joint_efforts,
+        imu_quaternion, imu_gyroscope, imu_accelerometer))
     {
-        // Check data length before parsing (minimum expected size for LowState)
-        const size_t min_expected_size = 100;  // Adjust based on FDSC::lowState structure
-        if (latest_data.size() >= min_expected_size)
-        {
-            try
-            {
-                this->fdsc_low_state.parseData(latest_data);
-            }
-            catch (const std::exception& e)
-            {
-                std::cout << LOGGER::ERROR << "Failed to parse low state data: " << e.what() << std::endl;
-                return;  // Early return on parse error
-            }
-        }
-        else
-        {
-            std::cout << LOGGER::WARNING << "Received incomplete low state data packet, size: " 
-                      << latest_data.size() << " (expected >= " << min_expected_size << ")" << std::endl;
-            return;  // Early return on incomplete data
-        }
-    }
-    else
-    {
-        // No data available, skip state update
+        // No data available or interface not ready
         return;
     }
-
-    // Parse joystick input
-    if (this->fdsc_low_state.wirelessdata.btn.components.A) this->control.SetGamepad(Input::Gamepad::A);
-    if (this->fdsc_low_state.wirelessdata.btn.components.B) this->control.SetGamepad(Input::Gamepad::B);
-    if (this->fdsc_low_state.wirelessdata.btn.components.X) this->control.SetGamepad(Input::Gamepad::X);
-    if (this->fdsc_low_state.wirelessdata.btn.components.Y) this->control.SetGamepad(Input::Gamepad::Y);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1) this->control.SetGamepad(Input::Gamepad::LB);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1) this->control.SetGamepad(Input::Gamepad::RB);
-    if (this->fdsc_low_state.wirelessdata.btn.components.F1) this->control.SetGamepad(Input::Gamepad::LStick);
-    if (this->fdsc_low_state.wirelessdata.btn.components.F2) this->control.SetGamepad(Input::Gamepad::RStick);
-    if (this->fdsc_low_state.wirelessdata.btn.components.up) this->control.SetGamepad(Input::Gamepad::DPadUp);
-    if (this->fdsc_low_state.wirelessdata.btn.components.down) this->control.SetGamepad(Input::Gamepad::DPadDown);
-    if (this->fdsc_low_state.wirelessdata.btn.components.left) this->control.SetGamepad(Input::Gamepad::DPadLeft);
-    if (this->fdsc_low_state.wirelessdata.btn.components.right) this->control.SetGamepad(Input::Gamepad::DPadRight);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.A) this->control.SetGamepad(Input::Gamepad::LB_A);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.B) this->control.SetGamepad(Input::Gamepad::LB_B);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.X) this->control.SetGamepad(Input::Gamepad::LB_X);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.Y) this->control.SetGamepad(Input::Gamepad::LB_Y);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.F1) this->control.SetGamepad(Input::Gamepad::LB_LStick);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.F2) this->control.SetGamepad(Input::Gamepad::LB_RStick);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.up) this->control.SetGamepad(Input::Gamepad::LB_DPadUp);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.down) this->control.SetGamepad(Input::Gamepad::LB_DPadDown);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.left) this->control.SetGamepad(Input::Gamepad::LB_DPadLeft);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.right) this->control.SetGamepad(Input::Gamepad::LB_DPadRight);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.A) this->control.SetGamepad(Input::Gamepad::RB_A);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.B) this->control.SetGamepad(Input::Gamepad::RB_B);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.X) this->control.SetGamepad(Input::Gamepad::RB_X);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.Y) this->control.SetGamepad(Input::Gamepad::RB_Y);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.F1) this->control.SetGamepad(Input::Gamepad::RB_LStick);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.F2) this->control.SetGamepad(Input::Gamepad::RB_RStick);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.up) this->control.SetGamepad(Input::Gamepad::RB_DPadUp);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.down) this->control.SetGamepad(Input::Gamepad::RB_DPadDown);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.left) this->control.SetGamepad(Input::Gamepad::RB_DPadLeft);
-    if (this->fdsc_low_state.wirelessdata.btn.components.R1 && this->fdsc_low_state.wirelessdata.btn.components.right) this->control.SetGamepad(Input::Gamepad::RB_DPadRight);
-    if (this->fdsc_low_state.wirelessdata.btn.components.L1 && this->fdsc_low_state.wirelessdata.btn.components.R1) this->control.SetGamepad(Input::Gamepad::LB_RB);
-
-    // IMU data - free_dog_sdk uses [w, x, y, z] format
-    state->imu.quaternion[0] = this->fdsc_low_state.imu_quaternion[0]; // w
-    state->imu.quaternion[1] = this->fdsc_low_state.imu_quaternion[1]; // x
-    state->imu.quaternion[2] = this->fdsc_low_state.imu_quaternion[2]; // y
-    state->imu.quaternion[3] = this->fdsc_low_state.imu_quaternion[3]; // z
-
-    for (int i = 0; i < 3; ++i)
-    {
-        state->imu.gyroscope[i] = this->fdsc_low_state.imu_gyroscope[i];
+    
+    // Copy IMU data
+    for (int i = 0; i < 4 && i < (int)imu_quaternion.size(); ++i) {
+        state->imu.quaternion[i] = imu_quaternion[i];
+    }
+    for (int i = 0; i < 3 && i < (int)imu_gyroscope.size(); ++i) {
+        state->imu.gyroscope[i] = imu_gyroscope[i];
     }
     
-    // Motor state
+    // Copy motor state with joint mapping
     for (int i = 0; i < this->params.Get<int>("num_of_dofs"); ++i)
     {
         int motor_idx = this->params.Get<std::vector<int>>("joint_mapping")[i];
-        state->motor_state.q[i] = this->fdsc_low_state.motorState[motor_idx].q;
-        state->motor_state.dq[i] = this->fdsc_low_state.motorState[motor_idx].dq;
-        state->motor_state.tau_est[i] = this->fdsc_low_state.motorState[motor_idx].tauEst;
+        if (motor_idx < (int)joint_positions.size()) {
+            state->motor_state.q[i] = joint_positions[motor_idx];
+            state->motor_state.dq[i] = joint_velocities[motor_idx];
+            state->motor_state.tau_est[i] = joint_efforts[motor_idx];
+        }
     }
 }
 
@@ -301,19 +268,27 @@ void RL_Real::SetCommand(const RobotCommand<float> *command)
         this->last_print_time = now;
     }
 
-    // Directly set motor commands like HardwareFreeDogSdk does
+    // Prepare command vectors with joint mapping
+    std::vector<float> joint_positions(12, 0.0f);
+    std::vector<float> joint_velocities(12, 0.0f);
+    std::vector<float> joint_torques(12, 0.0f);
+    std::vector<float> joint_kp(12, 0.0f);
+    std::vector<float> joint_kd(12, 0.0f);
+    
     for (int i = 0; i < this->params.Get<int>("num_of_dofs"); ++i)
     {
         int motor_idx = this->params.Get<std::vector<int>>("joint_mapping")[i];
-        
-        // Direct assignment to motor array (safer than setMotorCmd)
-        this->fdsc_low_command.motorCmd.motors[motor_idx].mode = FDSC::MotorModeLow::Servo;
-        this->fdsc_low_command.motorCmd.motors[motor_idx].q = static_cast<float>(command->motor_command.q[i]);
-        this->fdsc_low_command.motorCmd.motors[motor_idx].dq = static_cast<float>(command->motor_command.dq[i]);
-        this->fdsc_low_command.motorCmd.motors[motor_idx].tau = static_cast<float>(command->motor_command.tau[i]);
-        this->fdsc_low_command.motorCmd.motors[motor_idx].Kp = static_cast<float>(command->motor_command.kp[i]);
-        this->fdsc_low_command.motorCmd.motors[motor_idx].Kd = static_cast<float>(command->motor_command.kd[i]);
+        joint_positions[motor_idx] = command->motor_command.q[i];
+        joint_velocities[motor_idx] = command->motor_command.dq[i];
+        joint_torques[motor_idx] = command->motor_command.tau[i];
+        joint_kp[motor_idx] = command->motor_command.kp[i];
+        joint_kd[motor_idx] = command->motor_command.kd[i];
     }
+    
+    // Send command via hardware interface
+    hardware_interface_->SetCommand(
+        joint_positions, joint_velocities, joint_torques,
+        joint_kp, joint_kd);
 }
 
 void RL_Real::RobotControl()
@@ -417,6 +392,7 @@ std::vector<float> RL_Real::Forward()
     }
 }
 
+#ifdef PLOT
 void RL_Real::Plot()
 {
     this->plot_t.erase(this->plot_t.begin());
@@ -428,9 +404,9 @@ void RL_Real::Plot()
         this->plot_real_joint_pos[i].erase(this->plot_real_joint_pos[i].begin());
         this->plot_target_joint_pos[i].erase(this->plot_target_joint_pos[i].begin());
         
-        int motor_idx = this->params.Get<std::vector<int>>("joint_mapping")[i];
-        this->plot_real_joint_pos[i].push_back(this->fdsc_low_state.motorState[motor_idx].q);
-        this->plot_target_joint_pos[i].push_back(this->fdsc_low_command.motorCmd.motors[motor_idx].q);
+        // Use robot_state and robot_command instead of fdsc members
+        this->plot_real_joint_pos[i].push_back(this->robot_state.motor_state.q[i]);
+        this->plot_target_joint_pos[i].push_back(this->robot_command.motor_command.q[i]);
         
         plt::subplot(this->params.Get<int>("num_of_dofs"), 1, i + 1);
         plt::named_plot("_real_joint_pos", this->plot_t, this->plot_real_joint_pos[i], "r");
@@ -440,6 +416,7 @@ void RL_Real::Plot()
     // plt::legend();
     plt::pause(0.0001);
 }
+#endif
 
 #if !defined(USE_CMAKE) && defined(USE_ROS)
 void RL_Real::CmdvelCallback(

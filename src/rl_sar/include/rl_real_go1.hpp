@@ -16,7 +16,12 @@
 #include "loop.hpp"
 #include "fsm_go1.hpp"
 
-#include "fdsc_utils/free_dog_sdk_h.hpp"
+#include "hardware_interface_base.hpp"
+#include "hardware_interface_free_dog_sdk.hpp"
+#ifdef UNITREE_ROS2_AVAILABLE
+#include "hardware_interface_unitree_ros2.hpp"
+#endif
+
 #include <csignal>
 #include <chrono>
 
@@ -33,8 +38,10 @@
 #include <control_input_msgs/msg/inputs.hpp>
 #endif
 
+#ifdef PLOT
 #include "matplotlibcpp.h"
 namespace plt = matplotlibcpp;
+#endif
 
 class RL_Real : public RL
 {
@@ -68,15 +75,18 @@ private:
     std::vector<std::vector<float>> plot_real_joint_pos, plot_target_joint_pos;
     void Plot();
 
-    // free_dog_sdk interface
-    void UDPSend();
-    void UDPRecv();
-    std::shared_ptr<FDSC::UnitreeConnection> fdsc_conn;
-    FDSC::lowCmd fdsc_low_command;
-    FDSC::lowState fdsc_low_state;
-    std::vector<std::vector<uint8_t>> fdsc_data_buffer;
-    std::mutex fdsc_data_mutex_;  // Mutex to protect fdsc_data_buffer
-    int last_command_ = 0;
+    // Hardware interface (supports free_dog_sdk and unitree_ros2)
+    enum class HardwareProtocol {
+        FREE_DOG_SDK,
+        UNITREE_ROS2
+    };
+    
+    HardwareProtocol hardware_protocol_;
+    std::unique_ptr<HardwareInterfaceBase> hardware_interface_;
+    
+    void InitializeHardwareInterface();
+    void UDPSend();  // For backward compatibility
+    void UDPRecv();  // For backward compatibility
 
     // print timing
     std::chrono::steady_clock::time_point last_print_time;

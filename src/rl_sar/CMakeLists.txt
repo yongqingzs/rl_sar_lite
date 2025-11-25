@@ -402,6 +402,7 @@ include_directories(
     library/core/motion_loader
     library/core/inference_runtime
     library/core/logger
+    library/core/hardware_interface
     fsm_robot
 )
 
@@ -525,7 +526,41 @@ endif()
 
 # executable for rl real go1
 if(SYSTEM_TYPE STREQUAL "Linux")
-    add_executable(rl_real_go1 src/rl_real_go1.cpp)
+    # Check for unitree_ros2 availability
+    set(UNITREE_ROS2_AVAILABLE OFF)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble|jazzy")
+        # Try to find unitree_go from the local thirdparty directory first
+        set(unitree_go_DIR "${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/robot_sdk/unitree/unitree_ros2/cyclonedds_ws/install/unitree_go/share/unitree_go/cmake")
+        find_package(unitree_go QUIET PATHS ${unitree_go_DIR} NO_DEFAULT_PATH)
+        
+        # If not found locally, try system-wide
+        if(NOT unitree_go_FOUND)
+            find_package(unitree_go QUIET)
+        endif()
+        
+        if(unitree_go_FOUND)
+            set(UNITREE_ROS2_AVAILABLE ON)
+            message(STATUS "unitree_go (unitree_ros2) messages found - enabling unitree_ros2 protocol support")
+            add_compile_definitions(UNITREE_ROS2_AVAILABLE)
+        else()
+            message(STATUS "unitree_go (unitree_ros2) messages NOT found - only free_dog_sdk protocol available")
+        endif()
+    endif()
+
+    # Add hardware interface source files
+    set(HARDWARE_INTERFACE_SOURCES
+        library/core/hardware_interface/hardware_interface_free_dog_sdk.cpp
+    )
+    if(UNITREE_ROS2_AVAILABLE)
+        list(APPEND HARDWARE_INTERFACE_SOURCES
+            library/core/hardware_interface/hardware_interface_unitree_ros2.cpp
+        )
+    endif()
+
+    add_executable(rl_real_go1 
+        src/rl_real_go1.cpp
+        ${HARDWARE_INTERFACE_SOURCES}
+    )
     target_link_libraries(rl_real_go1
         ${UNITREE_GO1_LIBS}
         rl_sdk
@@ -541,6 +576,9 @@ if(SYSTEM_TYPE STREQUAL "Linux")
                 geometry_msgs
                 realtime_tools
             )
+            if(UNITREE_ROS2_AVAILABLE)
+                ament_target_dependencies(rl_real_go1 unitree_go)
+            endif()
             if (CONTROL_EXTRA)
                 ament_target_dependencies(rl_real_go1 control_input_msgs)
             endif()
