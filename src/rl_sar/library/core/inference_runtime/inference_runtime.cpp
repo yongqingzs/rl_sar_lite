@@ -7,6 +7,10 @@
 #include <stdexcept>
 #include <iostream>
 #include <numeric>
+#include <fstream>
+#include <sstream>
+#include <cstring>
+#include <filesystem>
 
 #ifdef USE_TORCH
 #include <ATen/Parallel.h>
@@ -14,6 +18,34 @@
 
 namespace InferenceRuntime
 {
+
+namespace
+{
+#ifdef USE_RKNN
+bool contains_rk3588_keyword(const std::string& text)
+{
+    if (text.empty())
+    {
+        return false;
+    }
+    std::string lowered = text;
+    std::transform(lowered.begin(), lowered.end(), lowered.begin(), ::tolower);
+    return lowered.find("rk3588") != std::string::npos;
+}
+
+std::string read_text_file(const std::string& path)
+{
+    std::ifstream file(path, std::ios::binary);
+    if (!file)
+    {
+        return {};
+    }
+    std::ostringstream oss;
+    oss << file.rdbuf();
+    return oss.str();
+}
+#endif
+} // namespace
 
 // ============================================================================
 // TorchModel Implementation
@@ -327,6 +359,311 @@ std::vector<float> ONNXModel::extract_output_data(const std::vector<Ort::Value>&
 #endif
 
 // ============================================================================
+// RknnModel Implementation
+// ============================================================================
+
+RknnModel::RknnModel() = default;
+
+RknnModel::~RknnModel()
+{
+#ifdef USE_RKNN
+    release_resources();
+#endif
+}
+
+bool RknnModel::load(const std::string& model_path)
+{
+#ifdef USE_RKNN
+    release_resources();
+
+    if (!validate_platform())
+    {
+        loaded_ = false;
+        return false;
+    }
+
+    std::ifstream file(model_path, std::ios::binary | std::ios::ate);
+    if (!file)
+    {
+        std::cout << LOGGER::ERROR << "Failed to open RKNN model file: " << model_path << std::endl;
+        loaded_ = false;
+        return false;
+    }
+
+    const std::streamsize file_size = file.tellg();
+    if (file_size <= 0)
+    {
+        std::cout << LOGGER::ERROR << "RKNN model file is empty: " << model_path << std::endl;
+        loaded_ = false;
+        return false;
+    }
+
+    file.seekg(0, std::ios::beg);
+    model_data_.resize(static_cast<size_t>(file_size));
+    if (!file.read(reinterpret_cast<char*>(model_data_.data()), file_size))
+    {
+        std::cout << LOGGER::ERROR << "Failed to read RKNN model data: " << model_path << std::endl;
+        loaded_ = false;
+        return false;
+    }
+
+    int ret = rknn_init(&ctx_, model_data_.data(), model_data_.size(), 0, nullptr);
+    if (ret < 0)
+    {
+        std::cout << LOGGER::ERROR << "rknn_init failed with code " << ret << std::endl;
+        release_resources();
+        return false;
+    }
+
+    std::memset(&io_num_, 0, sizeof(io_num_));
+    ret = rknn_query(ctx_, RKNN_QUERY_IN_OUT_NUM, &io_num_, sizeof(io_num_));
+    if (ret < 0)
+    {
+        std::cout << LOGGER::ERROR << "rknn_query(RKNN_QUERY_IN_OUT_NUM) failed with code " << ret << std::endl;
+        release_resources();
+        return false;
+    }
+
+    input_attrs_.resize(io_num_.n_input);
+    for (int i = 0; i < io_num_.n_input; ++i)
+    {
+        auto& attr = input_attrs_[i];
+        std::memset(&attr, 0, sizeof(attr));
+        attr.index = i;
+        ret = rknn_query(ctx_, RKNN_QUERY_INPUT_ATTR, &attr, sizeof(attr));
+        if (ret < 0)
+        {
+            std::cout << LOGGER::ERROR << "rknn_query(RKNN_QUERY_INPUT_ATTR) failed with code " << ret << std::endl;
+            release_resources();
+            return false;
+        }
+    }
+
+    output_attrs_.resize(io_num_.n_output);
+    for (int i = 0; i < io_num_.n_output; ++i)
+    {
+        auto& attr = output_attrs_[i];
+        std::memset(&attr, 0, sizeof(attr));
+        attr.index = i;
+        ret = rknn_query(ctx_, RKNN_QUERY_OUTPUT_ATTR, &attr, sizeof(attr));
+        if (ret < 0)
+        {
+            std::cout << LOGGER::ERROR << "rknn_query(RKNN_QUERY_OUTPUT_ATTR) failed with code " << ret << std::endl;
+            release_resources();
+            return false;
+        }
+    }
+
+    model_path_ = model_path;
+    loaded_ = true;
+    std::cout << LOGGER::INFO << "Successfully loaded RKNN model: " << model_path << std::endl;
+    return true;
+#else
+    (void)model_path;
+    std::cout << LOGGER::ERROR << "RKNN support not compiled. Please rebuild with USE_RKNN." << std::endl;
+    loaded_ = false;
+    return false;
+#endif
+}
+
+std::vector<float> RknnModel::forward(const std::vector<std::vector<float>>& inputs)
+{
+#ifdef USE_RKNN
+    if (!loaded_)
+    {
+        throw std::runtime_error("RKNN model not loaded");
+    }
+
+    if (inputs.size() != static_cast<size_t>(io_num_.n_input))
+    {
+        throw std::runtime_error("RKNN input count mismatch: expected " + std::to_string(io_num_.n_input));
+    }
+
+    std::vector<rknn_input> rknn_inputs(io_num_.n_input);
+    for (int i = 0; i < io_num_.n_input; ++i)
+    {
+        const auto& attr = input_attrs_[i];
+        const auto& data = inputs[i];
+        if (data.empty())
+        {
+            throw std::runtime_error("RKNN input data is empty at index " + std::to_string(i));
+        }
+
+        rknn_inputs[i] = {};
+        rknn_inputs[i].index = attr.index;
+        rknn_inputs[i].buf = const_cast<float*>(data.data());
+        rknn_inputs[i].size = data.size() * sizeof(float);
+        rknn_inputs[i].type = RKNN_TENSOR_FLOAT32; // All reinforcement-learning policies use float inputs
+        rknn_inputs[i].fmt = attr.fmt == RKNN_TENSOR_UNDEFINED ? RKNN_TENSOR_UNDEFINED : attr.fmt;
+        rknn_inputs[i].pass_through = 0; // Let RKNN convert float inputs to the model's native type
+
+        const size_t expected_elements = get_tensor_element_count(attr);
+        if (expected_elements > 0 && data.size() != expected_elements)
+        {
+            std::cout << LOGGER::WARNING
+                      << "RKNN input element mismatch at index " << i
+                      << ": expected " << expected_elements
+                      << ", got " << data.size() << std::endl;
+        }
+    }
+
+    int ret = rknn_inputs_set(ctx_, io_num_.n_input, rknn_inputs.data());
+    if (ret < 0)
+    {
+        throw std::runtime_error("rknn_inputs_set failed with code " + std::to_string(ret));
+    }
+
+    ret = rknn_run(ctx_, nullptr);
+    if (ret < 0)
+    {
+        throw std::runtime_error("rknn_run failed with code " + std::to_string(ret));
+    }
+
+    std::vector<rknn_output> rknn_outputs(io_num_.n_output);
+    for (int i = 0; i < io_num_.n_output; ++i)
+    {
+        rknn_outputs[i].index = output_attrs_[i].index;
+        rknn_outputs[i].want_float = 1;
+        rknn_outputs[i].is_prealloc = 0;
+        rknn_outputs[i].buf = nullptr;
+    }
+
+    ret = rknn_outputs_get(ctx_, io_num_.n_output, rknn_outputs.data(), nullptr);
+    if (ret < 0)
+    {
+        throw std::runtime_error("rknn_outputs_get failed with code " + std::to_string(ret));
+    }
+
+    size_t total_elements = 0;
+    for (int i = 0; i < io_num_.n_output; ++i)
+    {
+        size_t count = get_tensor_element_count(output_attrs_[i]);
+        if (count == 0 && rknn_outputs[i].size > 0)
+        {
+            count = rknn_outputs[i].size / sizeof(float);
+        }
+        total_elements += count;
+    }
+
+    std::vector<float> result;
+    result.reserve(total_elements);
+    for (int i = 0; i < io_num_.n_output; ++i)
+    {
+        const auto* buffer = reinterpret_cast<float*>(rknn_outputs[i].buf);
+        size_t element_count = get_tensor_element_count(output_attrs_[i]);
+        if (element_count == 0 && rknn_outputs[i].size > 0)
+        {
+            element_count = rknn_outputs[i].size / sizeof(float);
+        }
+        if (buffer && element_count > 0)
+        {
+            result.insert(result.end(), buffer, buffer + element_count);
+        }
+    }
+
+    ret = rknn_outputs_release(ctx_, io_num_.n_output, rknn_outputs.data());
+    if (ret < 0)
+    {
+        std::cout << LOGGER::WARNING << "rknn_outputs_release failed with code " << ret << std::endl;
+    }
+
+    return result;
+#else
+    (void)inputs;
+    throw std::runtime_error("RKNN support not compiled");
+#endif
+}
+
+#ifdef USE_RKNN
+void RknnModel::release_resources()
+{
+    if (ctx_ != 0)
+    {
+        rknn_destroy(ctx_);
+        ctx_ = 0;
+    }
+    model_data_.clear();
+    input_attrs_.clear();
+    output_attrs_.clear();
+    std::memset(&io_num_, 0, sizeof(io_num_));
+    loaded_ = false;
+}
+
+bool RknnModel::validate_platform() const
+{
+#if defined(__linux__)
+    const std::string compatible_path = "/proc/device-tree/compatible";
+    const std::string model_path = "/proc/device-tree/model";
+
+    if (std::filesystem::exists(compatible_path))
+    {
+        const auto content = read_text_file(compatible_path);
+        if (contains_rk3588_keyword(content))
+        {
+            return true;
+        }
+    }
+
+    if (std::filesystem::exists(model_path))
+    {
+        const auto content = read_text_file(model_path);
+        if (contains_rk3588_keyword(content))
+        {
+            return true;
+        }
+    }
+
+    std::cout << LOGGER::ERROR << "RKNN backend is only available on RK3588 devices." << std::endl;
+    return false;
+#else
+    std::cout << LOGGER::ERROR << "RKNN backend is only supported on Linux RK3588 devices." << std::endl;
+    return false;
+#endif
+}
+
+size_t RknnModel::get_tensor_element_count(const rknn_tensor_attr& attr) const
+{
+    if (attr.n_elems > 0)
+    {
+        return static_cast<size_t>(attr.n_elems);
+    }
+
+    const size_t type_size = get_tensor_type_size(attr.type);
+    if (type_size > 0 && attr.size >= type_size)
+    {
+        return static_cast<size_t>(attr.size) / type_size;
+    }
+
+    return 0;
+}
+
+size_t RknnModel::get_tensor_type_size(rknn_tensor_type type) const
+{
+    switch (type)
+    {
+        case RKNN_TENSOR_FLOAT32:
+        case RKNN_TENSOR_INT32:
+        case RKNN_TENSOR_UINT32:
+            return 4;
+        case RKNN_TENSOR_FLOAT16:
+        case RKNN_TENSOR_INT16:
+        case RKNN_TENSOR_UINT16:
+            return 2;
+        case RKNN_TENSOR_INT8:
+        case RKNN_TENSOR_UINT8:
+        case RKNN_TENSOR_BOOL:
+            return 1;
+        case RKNN_TENSOR_INT64:
+            return 8;
+        case RKNN_TENSOR_BFLOAT16:
+            return 2;
+        default:
+            return sizeof(float);
+    }
+}
+#endif
+
+// ============================================================================
 // ModelFactory Implementation
 // ============================================================================
 
@@ -338,6 +675,13 @@ std::unique_ptr<Model> ModelFactory::create_model(ModelType type)
             return std::make_unique<TorchModel>();
         case ModelType::ONNX:
             return std::make_unique<ONNXModel>();
+        case ModelType::RKNN:
+#ifdef USE_RKNN
+            return std::make_unique<RknnModel>();
+#else
+            std::cout << LOGGER::ERROR << "RKNN backend not available in this build." << std::endl;
+            return nullptr;
+#endif
         default:
             return nullptr;
     }
@@ -361,9 +705,17 @@ ModelFactory::ModelType ModelFactory::detect_model_type(const std::string& model
     {
         return ModelType::ONNX;
     }
+    else if (extension == ".rknn")
+    {
+#ifdef USE_RKNN
+        return ModelType::RKNN;
+#else
+        throw std::runtime_error("RKNN backend not enabled. Build on RK3588 with librknn_api to use .rknn models.");
+#endif
+    }
     else
     {
-        throw std::runtime_error("Unknown model file extension: " + extension + ". Supported: .pt, .pth, .onnx");
+        throw std::runtime_error("Unknown model file extension: " + extension + ". Supported: .pt, .pth, .onnx, .rknn");
     }
 }
 

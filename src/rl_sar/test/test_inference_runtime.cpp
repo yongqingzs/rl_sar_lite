@@ -470,14 +470,107 @@ TestResult test_onnx_abstraction(const std::string& model_path, const std::vecto
 }
 #endif
 
+#ifdef USE_RKNN
+// Test 5: RKNN - Abstraction Layer (InferenceRuntime)
+TestResult test_rknn_abstraction(const std::string& model_path, const std::vector<float>& input, int iterations) {
+    TestResult result;
+    result.name = "RKNN (InferenceRuntime)";
+
+    print_header("Test 5: RKNN Abstraction Layer");
+    std::cout << "Loading with ModelFactory::load_model()..." << std::endl;
+
+    auto model = InferenceRuntime::ModelFactory::load_model(model_path);
+    if (!model) {
+        std::cout << "ERROR: Failed to load model!" << std::endl;
+        result.is_stable = false;
+        return result;
+    }
+
+    std::cout << "Model loaded (type: " << model->get_model_type() << ")" << std::endl;
+
+    bool continuous_mode = (iterations <= 0);
+    if (continuous_mode) {
+        std::cout << "CONTINUOUS mode (Ctrl+C to stop)..." << std::endl;
+    } else {
+        std::cout << "Running " << iterations << " iterations..." << std::endl;
+    }
+
+    std::vector<std::vector<float>> all_outputs;
+    std::vector<double> times;
+
+    int i = 0;
+    while (continuous_mode || i < iterations) {
+        auto start = std::chrono::high_resolution_clock::now();
+
+        auto output = model->forward({input});
+
+        auto end = std::chrono::high_resolution_clock::now();
+        double elapsed_ms = std::chrono::duration<double, std::milli>(end - start).count();
+
+        times.push_back(elapsed_ms);
+        all_outputs.push_back(output);
+
+        if (continuous_mode) {
+            if (i % 100 == 0) {
+                std::cout << "Iter " << std::setw(6) << i << " | Time: " << std::setw(7)
+                          << std::fixed << std::setprecision(4) << elapsed_ms << " ms | Output[0:5]: ";
+                print_output_sample(output);
+                std::cout << std::endl;
+            }
+        } else {
+            if (i < 5 || i >= iterations - 2) {
+                std::cout << "Iter " << std::setw(2) << i << " | Time: " << std::setw(7)
+                          << std::fixed << std::setprecision(4) << elapsed_ms << " ms | Output[0:5]: ";
+                print_output_sample(output);
+                std::cout << std::endl;
+            } else if (i == 5) {
+                std::cout << "..." << std::endl;
+            }
+        }
+        i++;
+    }
+
+    // Calculate statistics
+    result.avg_time_ms = 0.0;
+    result.min_time_ms = times[0];
+    result.max_time_ms = times[0];
+
+    for (double t : times) {
+        result.avg_time_ms += t;
+        if (t < result.min_time_ms) result.min_time_ms = t;
+        if (t > result.max_time_ms) result.max_time_ms = t;
+    }
+    result.avg_time_ms /= times.size();
+
+    // Check stability
+    result.max_output_diff = 0.0;
+    result.is_stable = true;
+    result.first_output = all_outputs[0];
+
+    for (size_t i = 0; i < all_outputs[0].size(); i++) {
+        for (size_t j = 1; j < all_outputs.size(); j++) {
+            double diff = std::abs(all_outputs[j][i] - all_outputs[0][i]);
+            if (diff > result.max_output_diff) {
+                result.max_output_diff = diff;
+            }
+            if (diff > 1e-5) {
+                result.is_stable = false;
+            }
+        }
+    }
+
+    return result;
+}
+#endif
+
 int main(int argc, char** argv)
 {
     if (argc < 5) {
         std::cout << "Usage: " << argv[0] << " <model_path> <framework> <use_abstraction> <input_size> [iterations]" << std::endl;
         std::cout << std::endl;
         std::cout << "Parameters:" << std::endl;
-        std::cout << "  model_path        : Path to model file (.pt or .onnx)" << std::endl;
-        std::cout << "  framework         : torch or onnx" << std::endl;
+        std::cout << "  model_path        : Path to model file (.pt, .onnx, or .rknn)" << std::endl;
+        std::cout << "  framework         : torch, onnx, or rknn" << std::endl;
         std::cout << "  use_abstraction   : 0 (direct API) or 1 (use InferenceRuntime abstraction layer)" << std::endl;
         std::cout << "  input_size        : Size of input vector" << std::endl;
         std::cout << "  iterations        : Number of iterations (0 or -1 for continuous mode, Ctrl+C to stop)" << std::endl;
@@ -491,6 +584,9 @@ int main(int argc, char** argv)
         std::cout << std::endl;
         std::cout << "  # Test ONNX model with direct API, 100 iterations" << std::endl;
         std::cout << "  " << argv[0] << " policy/tita/robot_lab/policy.onnx onnx 0 270 100" << std::endl;
+        std::cout << std::endl;
+        std::cout << "  # Test RKNN model with abstraction layer, 50 iterations" << std::endl;
+        std::cout << "  " << argv[0] << " policy/go2/himloco/himloco.rknn rknn 1 270 50" << std::endl;
         return 1;
     }
 
@@ -501,8 +597,8 @@ int main(int argc, char** argv)
     int iterations = (argc >= 6) ? std::stoi(argv[5]) : 30;
 
     // Validate framework
-    if (framework != "torch" && framework != "onnx") {
-        std::cout << "ERROR: Invalid framework '" << framework << "'. Must be 'torch' or 'onnx'" << std::endl;
+    if (framework != "torch" && framework != "onnx" && framework != "rknn") {
+        std::cout << "ERROR: Invalid framework '" << framework << "'. Must be 'torch', 'onnx', or 'rknn'" << std::endl;
         return 1;
     }
 
@@ -535,15 +631,16 @@ int main(int argc, char** argv)
             std::cout << "ERROR: Torch support not compiled. Rebuild with USE_TORCH=ON" << std::endl;
             return 1;
 #endif
-        } else if (framework == "onnx") {
-#ifdef USE_ONNX
+        } else if (framework == "rknn") {
+#ifdef USE_RKNN
             if (use_abstraction) {
-                results.push_back(test_onnx_abstraction(model_path, input, iterations));
+                results.push_back(test_rknn_abstraction(model_path, input, iterations));
             } else {
-                results.push_back(test_onnx_direct(model_path, input, iterations));
+                std::cout << "ERROR: RKNN direct API test not implemented. Use abstraction layer." << std::endl;
+                return 1;
             }
 #else
-            std::cout << "ERROR: ONNX support not compiled. Rebuild with USE_ONNX=ON" << std::endl;
+            std::cout << "ERROR: RKNN support not compiled. Rebuild with USE_RKNN=ON on RK3588" << std::endl;
             return 1;
 #endif
         }

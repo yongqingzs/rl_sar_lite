@@ -11,6 +11,7 @@
 #include <memory>
 #include <filesystem>
 #include <algorithm>
+#include <cstdint>
 #include "logger.hpp"
 
 #ifdef USE_TORCH
@@ -19,6 +20,10 @@
 
 #ifdef USE_ONNX
 #include <onnxruntime_cxx_api.h>
+#endif
+
+#ifdef USE_RKNN
+#include <rknn_api.h>
 #endif
 
 namespace InferenceRuntime
@@ -56,7 +61,7 @@ public:
 
     /**
      * @brief Get model type string
-     * @return Model type ("torch" or "onnx")
+     * @return Model type ("torch", "onnx" or "rknn")
      */
     virtual std::string get_model_type() const = 0;
 };
@@ -151,6 +156,55 @@ private:
 };
 
 /**
+ * @brief RKNN model implementation class
+ *
+ * Provides inference support for models converted to Rockchip RKNN format.
+ */
+class RknnModel : public Model
+{
+private:
+    bool loaded_ = false;
+    std::string model_path_;
+
+#ifdef USE_RKNN
+    rknn_context ctx_ = 0;
+    rknn_input_output_num io_num_{};
+    std::vector<rknn_tensor_attr> input_attrs_;
+    std::vector<rknn_tensor_attr> output_attrs_;
+    std::vector<uint8_t> model_data_;
+
+    /**
+     * @brief Release RKNN context and buffers
+     */
+    void release_resources();
+
+    /**
+     * @brief Validate platform compatibility
+     */
+    bool validate_platform() const;
+
+    /**
+     * @brief Calculate number of elements in output tensor
+     */
+    size_t get_tensor_element_count(const rknn_tensor_attr& attr) const;
+
+    /**
+     * @brief Return tensor type size in bytes
+     */
+    size_t get_tensor_type_size(rknn_tensor_type type) const;
+#endif
+
+public:
+    RknnModel();
+    ~RknnModel();
+
+    bool load(const std::string& model_path) override;
+    bool is_loaded() const override { return loaded_; }
+    std::vector<float> forward(const std::vector<std::vector<float>>& inputs) override;
+    std::string get_model_type() const override { return "rknn"; }
+};
+
+/**
  * @brief Model factory class
  *
  * Responsible for creating and loading different types of models
@@ -165,6 +219,7 @@ public:
     {
         TORCH,  ///< TorchScript model
         ONNX,   ///< ONNX model
+        RKNN,   ///< Rockchip RKNN model
         AUTO    ///< Automatically detect model type
     };
 
