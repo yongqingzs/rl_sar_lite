@@ -207,7 +207,7 @@ void RL_Real::GetState(RobotState<float> *state)
 void RL_Real::PrintDebugInfo(const RobotCommand<float> *command)
 {
     // Print IMU state
-    std::cout << "IMU State - Quaternion: [" 
+    std::cout << std::endl << "IMU State - Quaternion: [" 
               << this->robot_state.imu.quaternion[0] << ", " 
               << this->robot_state.imu.quaternion[1] << ", " 
               << this->robot_state.imu.quaternion[2] << ", " 

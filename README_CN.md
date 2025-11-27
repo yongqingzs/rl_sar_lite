@@ -1,5 +1,12 @@
 # rl_sar
 
+## more feature based on rl_sar
+1. Unitree Go1 robot both in simulation and real robot.
+2. Ros2-Jazzy(Ubuntu24.04), mujoco is okay but gazebo doen‘t work(mujoco is all your need because it is more real).
+3. libtorch-arm64 for rk3588 etc.
+4. rknpu2 format for rk3588 etc.
+5. Independent hardware interface(now only for go1, can add other robot easily).This feature allows for easy interface conversion like ros2-control.
+
 [![Ubuntu 20.04/22.04](https://img.shields.io/badge/Ubuntu-20.04/22.04-blue.svg?logo=ubuntu)](https://ubuntu.com/)
 [![macOS](https://img.shields.io/badge/macOS-Experimental-orange.svg?logo=apple)](https://www.apple.com/macos/)
 [![ROS Noetic](https://img.shields.io/badge/ros-noetic-brightgreen.svg?logo=ros)](https://wiki.ros.org/noetic)
@@ -29,7 +36,7 @@
 |Robot Name (rname:=)|Pre-Trained Policy|Gazebo|Mujoco|Real|
 |-|-|-|-|-|
 |Unitree-A1 (a1)|legged_gym (IsaacGym)|✅|❌|✅|
-|Unitree-Go1 (Go1)|legged_gym (IsaacGym)|✅|❌|✅|
+|Unitree-Go1 (Go1)|legged_gym (IsaacGym)|✅|✅|✅|
 |Unitree-Go2 (go2)|himloco (IsaacGym)</br>robot_lab (IsaacSim)|✅|✅|✅</br>✅|
 |Unitree-Go2W (go2w)|robot_lab (IsaacSim)|✅|✅|✅|
 |Unitree-B2 (b2)|robot_lab (IsaacSim)|✅|✅|⚪|
@@ -89,6 +96,19 @@ sudo apt install ros-noetic-teleop-twist-keyboard ros-noetic-controller-interfac
 
 # ros2-foxy (Ubuntu20.04) / ros2-humble (Ubuntu22.04)
 sudo apt install ros-$ROS_DISTRO-teleop-twist-keyboard ros-$ROS_DISTRO-ros2-control ros-$ROS_DISTRO-ros2-controllers ros-$ROS_DISTRO-control-toolbox ros-$ROS_DISTRO-robot-state-publisher ros-$ROS_DISTRO-joint-state-publisher-gui ros-$ROS_DISTRO-gazebo-ros2-control ros-$ROS_DISTRO-gazebo-ros-pkgs ros-$ROS_DISTRO-xacro
+
+# ros2-jazzy (Ubuntu24.04)
+sudo apt install \
+  ros-jazzy-teleop-twist-keyboard \
+  ros-jazzy-ros2-control \
+  ros-jazzy-ros2-controllers \
+  ros-jazzy-control-toolbox \
+  ros-jazzy-robot-state-publisher \
+  ros-jazzy-joint-state-publisher-gui \
+  ros-jazzy-xacro \
+  ros-jazzy-ros-gz-sim \
+  ros-jazzy-ros-gz-bridge
+sudo apt install libopenblas-dev libopenblas0 liblapack-dev liblapack3
 ```
 
 ## 编译
