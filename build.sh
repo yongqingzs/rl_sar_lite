@@ -323,6 +323,35 @@ create_symlinks_for_specific_packages() {
     fi
 }
 
+setup_external_ros_dependencies() {
+    print_header "[Setting up External ROS Dependencies]"
+
+    local cyclonedds_ws_path="${SCRIPT_DIR}/src/rl_sar/library/thirdparty/robot_sdk/unitree/unitree_ros2/cyclonedds_ws"
+
+    if [ ! -d "$cyclonedds_ws_path" ]; then
+        print_error "CycloneDDS workspace not found at: $cyclonedds_ws_path"
+        exit 1
+    fi
+
+    print_info "Building CycloneDDS workspace for unitree_go..."
+    cd "$cyclonedds_ws_path" || {
+        print_error "Failed to change directory to: $cyclonedds_ws_path"
+        exit 1
+    }
+
+    # Build the specific package with symlink install
+    MAKEFLAGS="-j4" colcon build --packages-up-to unitree_go --symlink-install || {
+        print_error "Failed to build CycloneDDS workspace"
+        exit 1
+    }
+
+    # Set COLCON_PREFIX_PATH to include the built install directory for the main build
+    export COLCON_PREFIX_PATH="${cyclonedds_ws_path}/install:$COLCON_PREFIX_PATH"
+
+    print_success "External ROS dependencies setup completed!"
+    cd "$SCRIPT_DIR"  # Return to original directory
+}
+
 # ========================
 # Main Script
 # ========================
@@ -406,6 +435,7 @@ main() {
 
     setup_inference_runtime
     setup_robot_descriptions
+    setup_external_ros_dependencies
     run_ros_build "${packages[@]}"
 }
 

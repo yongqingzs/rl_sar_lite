@@ -51,9 +51,9 @@ tmp/
 !libtorch-arm64-2_3_0.zip
 
 # policies
-syj_policy_**/
-zxb_policy_**/
-cc_policy_**/
-no_foot_**/
 himloco_**/
 my_unitree_**/
+np3o/
+policy**_**.pt
+him**_**.pt
+dwq**_**.pt
