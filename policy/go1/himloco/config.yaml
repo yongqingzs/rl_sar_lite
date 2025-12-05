@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 go1/himloco:
+# him1119_2200 kp: 20
   model_name: "him1119_2200.pt"
   num_observations: 45
   observations: ["commands", "ang_vel", "gravity_vec", "dof_pos", "dof_vel", "actions"]
@@ -32,6 +33,14 @@ go1/himloco:
           0.5, 0.5, 0.5,
           0.5, 0.5, 0.5,
           0.5, 0.5, 0.5]
+#   rl_kp: [30, 30, 30,
+#           30, 30, 30,
+#           30, 30, 30,
+#           30, 30, 30]
+#   rl_kd: [0.8, 0.8, 0.8,
+#           0.8, 0.8, 0.8,
+#           0.8, 0.8, 0.8,
+#           0.8, 0.8, 0.8]
   fixed_kp: [40.0, 40.0, 40.0,
              40.0, 40.0, 40.0,
              40.0, 40.0, 40.0,

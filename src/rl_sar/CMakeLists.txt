@@ -621,7 +621,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             find_package(unitree_go QUIET)
         endif()
         
-        if(unitree_go_FOUND)
+        if(unitree_go_FOUND AND NOT USE_CMAKE)
             set(UNITREE_ROS2_AVAILABLE ON)
             message(STATUS "unitree_go (unitree_ros2) messages found - enabling unitree_ros2 protocol support")
             add_compile_definitions(UNITREE_ROS2_AVAILABLE)
