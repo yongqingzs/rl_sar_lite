@@ -106,9 +106,29 @@ void RL_Real::InitializeHardwareInterface()
 #ifdef UNITREE_ROS2_AVAILABLE
         hardware_protocol_ = HardwareProtocol::UNITREE_ROS2;
         hardware_interface_ = std::make_unique<HardwareInterfaceUnitreeRos2>(ros2_node);
-        std::cout << LOGGER::INFO << "Using unitree_ros2 protocol" << std::endl;
+        std::cout << LOGGER::INFO << "Using unitree_ros2 protocol (ROS2 bridge)" << std::endl;
 #else
         std::cout << LOGGER::WARNING << "unitree_ros2 not available, falling back to free_dog_sdk" << std::endl;
+        hardware_protocol_ = HardwareProtocol::FREE_DOG_SDK;
+        hardware_interface_ = std::make_unique<HardwareInterfaceFreeDogSdk>();
+#endif
+    } else if (protocol_str == "unitree_sdk2") {
+#ifdef UNITREE_SDK2_AVAILABLE
+        hardware_protocol_ = HardwareProtocol::UNITREE_SDK2;
+        auto sdk2_interface = std::make_unique<HardwareInterfaceUnitreeSdk2>();
+        
+        // Configure SDK2 parameters from YAML if available
+        std::string network_interface = this->params.Get<std::string>("network_interface", "lo");
+        int domain = this->params.Get<int>("domain", 0);
+        
+        sdk2_interface->SetNetworkInterface(network_interface);
+        sdk2_interface->SetDomain(domain);
+        
+        hardware_interface_ = std::move(sdk2_interface);
+        std::cout << LOGGER::INFO << "Using unitree_sdk2 protocol (DDS direct, interface: " 
+                  << network_interface << ", domain: " << domain << ")" << std::endl;
+#else
+        std::cout << LOGGER::WARNING << "unitree_sdk2 not available, falling back to free_dog_sdk" << std::endl;
         hardware_protocol_ = HardwareProtocol::FREE_DOG_SDK;
         hardware_interface_ = std::make_unique<HardwareInterfaceFreeDogSdk>();
 #endif

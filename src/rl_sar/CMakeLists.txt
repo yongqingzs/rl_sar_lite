@@ -426,6 +426,8 @@ endif()
 if(SYSTEM_TYPE STREQUAL "Linux")
 set(BUILD_EXAMPLES OFF CACHE BOOL "Disable examples build for unitree_sdk2" FORCE)
 add_subdirectory(library/thirdparty/robot_sdk/unitree/unitree_sdk2)
+set(UNITREE_SDK2_AVAILABLE ON)
+add_compile_definitions(UNITREE_SDK2_AVAILABLE)
 endif()
 
 # l4w4_sdk
@@ -639,6 +641,11 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             library/core/hardware_interface/hardware_interface_unitree_ros2.cpp
         )
     endif()
+    if(UNITREE_SDK2_AVAILABLE)
+        list(APPEND HARDWARE_INTERFACE_SOURCES
+            library/core/hardware_interface/hardware_interface_unitree_sdk2.cpp
+        )
+    endif()
 
     add_executable(rl_real_go1 
         src/rl_real_go1.cpp
@@ -667,6 +674,13 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             endif()
             install(TARGETS rl_real_go1 DESTINATION lib/${PROJECT_NAME})
         endif()
+    endif()
+    if(UNITREE_SDK2_AVAILABLE)
+        target_link_libraries(rl_real_go1 unitree_sdk2)
+        target_compile_definitions(rl_real_go1 PRIVATE UNITREE_SDK2_AVAILABLE)
+        set_target_properties(rl_real_go1 PROPERTIES
+            INSTALL_RPATH "${CMAKE_INSTALL_RPATH};${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/robot_sdk/unitree/unitree_sdk2/thirdparty/lib/${ARCH_DIR}"
+        )
     endif()
 endif()
 

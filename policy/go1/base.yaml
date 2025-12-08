@@ -8,8 +8,15 @@ go1:
   decimation: 4
   
   # Hardware communication protocol selection
-  # Options: "free_dog_sdk" (default) or "unitree_ros2"
-  hardware_protocol: "free_dog_sdk"
+  # Options: 
+  #   "free_dog_sdk" (default) - Original SDK, loopback testing
+  #   "unitree_ros2"           - ROS2 bridge communication
+  #   "unitree_sdk2"           - Direct DDS communication (low latency)
+  hardware_protocol: "unitree_sdk2"
+  
+  # SDK2-specific parameters (only used when hardware_protocol is "unitree_sdk2")
+  network_interface: "lo"  # Network interface for DDS ("lo" for loopback, "eth0" for real robot)
+  domain: 1                  # DDS domain ID (0-232)
   
   fixed_kp: [80.0, 80.0, 80.0,
              80.0, 80.0, 80.0,

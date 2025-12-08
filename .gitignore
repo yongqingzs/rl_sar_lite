@@ -41,7 +41,7 @@ MUJOCO_LOG.TXT
 temp_extract*/
 
 # robot descriptions
-rl_sar_zoo
+# rl_sar_zoo
 
 legged_docs/
 

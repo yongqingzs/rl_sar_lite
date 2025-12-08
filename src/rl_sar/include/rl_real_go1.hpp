@@ -21,6 +21,9 @@
 #ifdef UNITREE_ROS2_AVAILABLE
 #include "hardware_interface_unitree_ros2.hpp"
 #endif
+#ifdef UNITREE_SDK2_AVAILABLE
+#include "hardware_interface_unitree_sdk2.hpp"
+#endif
 
 #include <csignal>
 #include <chrono>
@@ -73,10 +76,11 @@ private:
     std::vector<std::vector<float>> plot_real_joint_pos, plot_target_joint_pos;
     void Plot();
 
-    // Hardware interface (supports free_dog_sdk and unitree_ros2)
+    // Hardware interface (supports free_dog_sdk, unitree_ros2, and unitree_sdk2)
     enum class HardwareProtocol {
         FREE_DOG_SDK,
-        UNITREE_ROS2
+        UNITREE_ROS2,
+        UNITREE_SDK2
     };
     
     HardwareProtocol hardware_protocol_;
