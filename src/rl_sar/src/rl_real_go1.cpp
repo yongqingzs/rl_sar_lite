@@ -185,6 +185,8 @@ void RL_Real::GetState(RobotState<float> *state)
             this->control.current_keyboard = Input::Keyboard::Num1;
         else if (cmd == 4)
             this->control.current_keyboard = Input::Keyboard::Num2;
+        else if (cmd == 5)
+            this->control.current_keyboard = Input::Keyboard::Num3;
 
         this->control.x = 0;
         this->control.y = 0;

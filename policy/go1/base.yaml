@@ -5,6 +5,7 @@ go1:
   dt: 0.005
   model_folder: "my_unitree_go1"
   model_folder1: "himloco"
+  model_folder2: "himloco1"
   decimation: 4
   
   # Hardware communication protocol selection
@@ -12,7 +13,7 @@ go1:
   #   "free_dog_sdk" (default) - Original SDK, loopback testing
   #   "unitree_ros2"           - ROS2 bridge communication
   #   "unitree_sdk2"           - Direct DDS communication (low latency)
-  hardware_protocol: "unitree_sdk2"
+  hardware_protocol: "free_dog_sdk"
   
   # SDK2-specific parameters (only used when hardware_protocol is "unitree_sdk2")
   network_interface: "lo"  # Network interface for DDS ("lo" for loopback, "eth0" for real robot)
