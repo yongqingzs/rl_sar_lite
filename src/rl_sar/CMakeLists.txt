@@ -35,6 +35,9 @@ endif()
 # MuJoCo simulator option
 set(USE_MUJOCO OFF CACHE BOOL "Build with MuJoCo simulator support")
 
+# Gazebo simulator option (for ROS builds)
+set(USE_GAZEBO ON CACHE BOOL "Build with Gazebo/Gz simulator support")
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -60,7 +63,6 @@ if(NOT USE_CMAKE)
             joint_state_controller
             robot_state_publisher
             roscpp
-            gazebo_ros
             std_msgs
             tf
             geometry_msgs
@@ -68,46 +70,55 @@ if(NOT USE_CMAKE)
             robot_joint_controller
             rospy
         )
+        if(USE_GAZEBO)
+            find_package(catkin REQUIRED COMPONENTS gazebo_ros)
+        endif()
         catkin_package(
             CATKIN_DEPENDS
             robot_joint_controller
             rospy
         )
-        add_compile_options(${GAZEBO_CXX_FLAGS})
-        find_package(gazebo REQUIRED)
+        if(USE_GAZEBO)
+            add_compile_options(${GAZEBO_CXX_FLAGS})
+            find_package(gazebo REQUIRED)
+        endif()
     elseif($ENV{ROS_DISTRO} MATCHES "foxy|humble")
         find_package(ament_cmake REQUIRED)
         find_package(joint_state_broadcaster REQUIRED)
         find_package(robot_state_publisher REQUIRED)
         find_package(rclcpp REQUIRED)
-        find_package(gazebo_ros REQUIRED)
         find_package(std_msgs REQUIRED)
         find_package(robot_msgs REQUIRED)
         find_package(robot_joint_controller REQUIRED)
         find_package(rclpy REQUIRED)
-        find_package(gazebo_msgs REQUIRED)
         find_package(std_srvs REQUIRED)
         find_package(geometry_msgs REQUIRED)
         find_package(realtime_tools REQUIRED)
+        if(USE_GAZEBO)
+            find_package(gazebo_ros REQUIRED)
+            find_package(gazebo_msgs REQUIRED)
+            add_compile_options(${GAZEBO_CXX_FLAGS})
+            find_package(gazebo REQUIRED)
+        endif()
         ament_package()
-        add_compile_options(${GAZEBO_CXX_FLAGS})
-        find_package(gazebo REQUIRED)
     elseif($ENV{ROS_DISTRO} MATCHES "jazzy")
         find_package(ament_cmake REQUIRED)
         find_package(joint_state_broadcaster REQUIRED)
         find_package(robot_state_publisher REQUIRED)
         find_package(rclcpp REQUIRED)
-        find_package(ros_gz_sim REQUIRED)
         find_package(std_msgs REQUIRED)
         find_package(robot_msgs REQUIRED)
         find_package(robot_joint_controller REQUIRED)
         find_package(rclpy REQUIRED)
-        find_package(ros_gz_interfaces REQUIRED)
         find_package(std_srvs REQUIRED)
         find_package(geometry_msgs REQUIRED)
         find_package(realtime_tools REQUIRED)
+        if(USE_GAZEBO)
+            find_package(ros_gz_sim REQUIRED)
+            find_package(ros_gz_interfaces REQUIRED)
+            find_package(gz-sim8 REQUIRED) # 确保 gz-sim8 的 CMake 配置可被找到
+        endif()
         ament_package()
-        find_package(gz-sim8 REQUIRED) # 确保 gz-sim8 的 CMake 配置可被找到
         add_compile_options(-Wall -Wextra -Wpedantic)
     endif()
 
@@ -544,7 +555,7 @@ if(NOT USE_CMAKE)
 endif()
 
 # executable for rl sim
-if(NOT USE_CMAKE)
+if(NOT USE_CMAKE AND USE_GAZEBO)
     add_executable(rl_sim src/rl_sim.cpp)
     target_link_libraries(rl_sim
         rl_sdk
@@ -982,6 +993,7 @@ if(USE_ONNX)
 endif()
 message(STATUS "----------------------------------------")
 message(STATUS "Simulator Configuration:")
+message(STATUS "USE_GAZEBO: ${USE_GAZEBO}")
 message(STATUS "USE_MUJOCO: ${USE_MUJOCO}")
 if(USE_MUJOCO)
     message(STATUS "MuJoCo: Enabled")

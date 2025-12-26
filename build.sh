@@ -97,6 +97,13 @@ run_ros_build() {
 
     print_header "[Running ROS Build]"
 
+    # Set CMake arguments for Gazebo option
+    local cmake_args=""
+    if [ "$disable_gazebo" = true ]; then
+        cmake_args="-DUSE_GAZEBO=OFF"
+        print_info "Building without Gazebo support"
+    fi
+
     # Clean existing symlinks
     clean_existing_symlinks "${packages[@]}"
 
@@ -115,21 +122,21 @@ run_ros_build() {
         if [[ "$ROS_DISTRO" == "noetic" ]]; then
             print_header "[Using catkin build]"
             print_info "Building all packages..."
-            catkin build -j4
+            catkin build -j4 --cmake-args $cmake_args
         else
             print_header "[Using colcon build]"
             print_info "Building all packages..."
-            MAKEFLAGS="-j4" colcon build --merge-install --symlink-install
+            MAKEFLAGS="-j4" colcon build --merge-install --symlink-install --cmake-args $cmake_args
         fi
     else
         if [[ "$ROS_DISTRO" == "noetic" ]]; then
             print_header "[Using catkin build]"
             print_info "Building specific packages: $package_list"
-            catkin build $package_list
+            catkin build $package_list --cmake-args $cmake_args
         else
             print_header "[Using colcon build]"
             print_info "Building specific packages: $package_list"
-            MAKEFLAGS="-j4" colcon build --merge-install --symlink-install --packages-select $package_list
+            MAKEFLAGS="-j4" colcon build --merge-install --symlink-install --packages-select $package_list --cmake-args $cmake_args
         fi
     fi
 
@@ -362,13 +369,15 @@ show_usage() {
     echo -e "Usage: $0 [OPTIONS] [PACKAGE_NAMES...]"
     echo ""
     echo -e "${COLOR_INFO}Options:${COLOR_RESET}"
-    echo -e "  -c, --clean      Clean workspace (remove symlinks and build artifacts)"
-    echo -e "  -m, --cmake      Build using CMake (for hardware deployment only)"
-    echo -e "  -mj,--mujoco     Build with MuJoCo simulator support (CMake only)"
-    echo -e "  -h, --help       Show this help message"
+    echo -e "  -c, --clean       Clean workspace (remove symlinks and build artifacts)"
+    echo -e "  -m, --cmake       Build using CMake (for hardware deployment only)"
+    echo -e "  -mj,--mujoco      Build with MuJoCo simulator support (CMake only)"
+    echo -e "  -ng,--no-gazebo   Build without Gazebo/Gz simulator support (ROS only)"
+    echo -e "  -h, --help        Show this help message"
     echo ""
     echo -e "${COLOR_INFO}Examples:${COLOR_RESET}"
-    echo -e "  $0                    # Build all ROS packages"
+    echo -e "  $0                    # Build all ROS packages with Gazebo"
+    echo -e "  $0 -ng                # Build all ROS packages without Gazebo"
     echo -e "  $0 package1 package2  # Build specific ROS packages"
     echo -e "  $0 -c                 # Clean all symlinks and build artifacts"
     echo -e "  $0 --clean package1   # Clean specific package and build artifacts"
@@ -381,6 +390,7 @@ main() {
     local clean_mode=false
     local cmake_mode=false
     local mujoco_mode=false
+    local disable_gazebo=false
 
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do
@@ -388,6 +398,7 @@ main() {
             -c|--clean) clean_mode=true; shift ;;
             -m|--cmake) cmake_mode=true; shift ;;
             -mj|--mujoco) cmake_mode=true; mujoco_mode=true; shift ;;
+            -ng|--no-gazebo) disable_gazebo=true; shift ;;
             -do|--download-only) download_only=true; shift ;;
             -h|--help) show_usage; exit 0 ;;
             --) shift; packages+=("$@"); break ;;
