@@ -119,20 +119,21 @@ run_ros_build() {
 
     # Execute build
     if [ ${#packages[@]} -eq 0 ]; then
+        package_list=("rl_sar" "robot_joint_controller" "robot_msgs")
         if [[ "$ROS_DISTRO" == "noetic" ]]; then
             print_header "[Using catkin build]"
             print_info "Building all packages..."
-            catkin build -j4 --cmake-args $cmake_args
+            catkin build -j4 $package_list --cmake-args $cmake_args
         else
             print_header "[Using colcon build]"
             print_info "Building all packages..."
-            MAKEFLAGS="-j4" colcon build --merge-install --symlink-install --cmake-args $cmake_args
+            MAKEFLAGS="-j4" colcon build --merge-install --symlink-install --packages-up-to $package_list --cmake-args $cmake_args
         fi
     else
         if [[ "$ROS_DISTRO" == "noetic" ]]; then
             print_header "[Using catkin build]"
             print_info "Building specific packages: $package_list"
-            catkin build $package_list --cmake-args $cmake_args
+            catkin build -j4 $package_list --cmake-args $cmake_args
         else
             print_header "[Using colcon build]"
             print_info "Building specific packages: $package_list"
@@ -152,6 +153,8 @@ clean_workspace() {
 
     print_header "[Cleaning Workspace]"
 
+    local cyclonedds_ws_path="${SCRIPT_DIR}/src/rl_sar/library/thirdparty/robot_sdk/unitree/unitree_ros2/cyclonedds_ws"
+
     # Show what will be cleaned
     print_info "The following will be cleaned:"
     if [ ${#packages[@]} -eq 0 ]; then
@@ -166,6 +169,7 @@ clean_workspace() {
     echo "  - directory log/"
     echo "  - directory logs/"
     echo "  - directory .catkin_tools/"
+    echo "  - CycloneDDS workspace build artifacts in $cyclonedds_ws_path"
 
     # Ask for confirmation
     if [ ${#packages[@]} -eq 0 ]; then
@@ -179,6 +183,15 @@ clean_workspace() {
             exit 0
         fi
     fi
+
+    # Clean git submodules
+    print_info "Cleaning git submodules..."
+    git submodule foreach --recursive '
+      echo "=== cleaning $name ==="
+      git reset --hard
+      git clean -fd
+    '
+    print_success "Git submodules cleaned!"
 
     # Remove package.xml symlinks
     if [ ${#packages[@]} -eq 0 ]; then
@@ -205,6 +218,12 @@ clean_workspace() {
     # Clean build artifacts
     print_info "Cleaning build artifacts..."
     rm -rf build/ cmake_build/ devel/ install/ log/ logs/ .catkin_tools/
+
+    # Clean CycloneDDS workspace build artifacts
+    if [ -d "$cyclonedds_ws_path" ]; then
+        rm -rf "$cyclonedds_ws_path/build" "$cyclonedds_ws_path/install" "$cyclonedds_ws_path/log"
+        print_info "Cleaned CycloneDDS workspace build artifacts"
+    fi
 
     print_success "Clean completed!"
 }
@@ -331,10 +350,38 @@ create_symlinks_for_specific_packages() {
 }
 
 setup_external_ros_dependencies() {
+    # Check if ROS version is humble or jazzy, otherwise exit
+    if [[ "$ROS_DISTRO" != "humble" && "$ROS_DISTRO" != "jazzy" ]]; then
+        print_info "External ROS dependencies setup skipped for ROS $ROS_DISTRO"
+        return 0
+    fi
+
     print_header "[Setting up External ROS Dependencies]"
 
     local cyclonedds_ws_path="${SCRIPT_DIR}/src/rl_sar/library/thirdparty/robot_sdk/unitree/unitree_ros2/cyclonedds_ws"
+    local third_ws_path="${SCRIPT_DIR}/src/rl_sar/library/thirdparty/third_ws"
 
+    # Build third_ws for control_input_msgs
+    if [ -d "$third_ws_path" ]; then
+        print_info "Building third_ws for control_input_msgs..."
+        cd "$third_ws_path" || {
+            print_error "Failed to change directory to: $third_ws_path"
+            exit 1
+        }
+
+        MAKEFLAGS="-j4" colcon build --packages-up-to control_input_msgs --symlink-install || {
+            print_error "Failed to build third_ws"
+            exit 1
+        }
+
+        export COLCON_PREFIX_PATH="${third_ws_path}/install:$COLCON_PREFIX_PATH"
+        print_success "third_ws build completed!"
+        cd "$SCRIPT_DIR"
+    else
+        print_warning "third_ws not found at: $third_ws_path"
+    fi
+
+    # Build CycloneDDS workspace for unitree_go
     if [ ! -d "$cyclonedds_ws_path" ]; then
         print_error "CycloneDDS workspace not found at: $cyclonedds_ws_path"
         exit 1
@@ -390,7 +437,7 @@ main() {
     local clean_mode=false
     local cmake_mode=false
     local mujoco_mode=false
-    local disable_gazebo=false
+    local disable_gazebo=true
 
     # Parse command line arguments
     while [[ $# -gt 0 ]]; do

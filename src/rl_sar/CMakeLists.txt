@@ -23,7 +23,6 @@ if(NOT USE_CMAKE)
     endif()
 
     if($ENV{ROS_DISTRO} MATCHES "jazzy")
-        set(CONTROL_EXTRA ON)
         add_compile_definitions(CONTROL_EXTRA)
         add_compile_definitions(USE_ROS)
     endif()
@@ -120,10 +119,6 @@ if(NOT USE_CMAKE)
         endif()
         ament_package()
         add_compile_options(-Wall -Wextra -Wpedantic)
-    endif()
-
-    if (CONTROL_EXTRA)
-        find_package(control_input_msgs REQUIRED)
     endif()
 endif()
 
@@ -622,6 +617,27 @@ endif()
 
 # executable for rl real go1
 if(SYSTEM_TYPE STREQUAL "Linux")
+    # Check for control_input_msgs availability
+    set(CONTROL_INPUT_MSGS_AVAILABLE OFF)
+    if($ENV{ROS_DISTRO} MATCHES "foxy|humble|jazzy")
+        # Try to find control_input_msgs from the local thirdparty directory first
+        set(control_input_msgs_DIR "${CMAKE_CURRENT_SOURCE_DIR}/library/thirdparty/third_ws/install/control_input_msgs/share/control_input_msgs/cmake")
+        find_package(control_input_msgs QUIET PATHS ${control_input_msgs_DIR} NO_DEFAULT_PATH)
+        
+        # If not found locally, try system-wide
+        if(NOT control_input_msgs_FOUND)
+            find_package(control_input_msgs QUIET)
+        endif()
+        
+        if(control_input_msgs_FOUND AND NOT USE_CMAKE)
+            set(CONTROL_INPUT_MSGS_AVAILABLE ON)
+            message(STATUS "control_input_msgs found - enabling control input support")
+            add_compile_definitions(CONTROL_INPUT_MSGS_AVAILABLE)
+        else()
+            message(STATUS "control_input_msgs NOT found")
+        endif()
+    endif()
+
     # Check for unitree_ros2 availability
     set(UNITREE_ROS2_AVAILABLE OFF)
     if($ENV{ROS_DISTRO} MATCHES "foxy|humble|jazzy")
@@ -680,7 +696,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
             if(UNITREE_ROS2_AVAILABLE)
                 ament_target_dependencies(rl_real_go1 unitree_go)
             endif()
-            if (CONTROL_EXTRA)
+            if(CONTROL_INPUT_MSGS_AVAILABLE)
                 ament_target_dependencies(rl_real_go1 control_input_msgs)
             endif()
             install(TARGETS rl_real_go1 DESTINATION lib/${PROJECT_NAME})

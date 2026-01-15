@@ -60,3 +60,6 @@ policy**_**.pt
 him**_**.pt
 dwq**_**.pt
 himloco1/
+
+# !no
+!src/rl_sar/library/thirdparty/third_ws/control_input_msgs/package.xml
