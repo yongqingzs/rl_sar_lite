@@ -1,0 +1,48 @@
+# Copyright (c) 2024-2025 Ziqi Fan
+# SPDX-License-Identifier: Apache-2.0
+
+bridge:
+  dt: 0.002
+  model_folder: "my_unitree_go1"
+  model_folder1: "himloco"
+  model_folder2: "himloco1"
+  decimation: 10
+  
+  # Hardware communication protocol selection
+  # Options: 
+  #   "free_dog_sdk" (default) - Original SDK, loopback testing
+  #   "unitree_ros2"           - ROS2 bridge communication
+  #   "unitree_sdk2"           - Direct DDS communication (low latency)
+  hardware_protocol: "unitree_sdk2"
+  
+  # SDK2-specific parameters (only used when hardware_protocol is "unitree_sdk2")
+  network_interface: "lo"  # Network interface for DDS ("lo" for loopback, "eth0" for real robot)
+  domain: 1                  # DDS domain ID (0-232)
+  
+  fixed_kp: [40.0, 40.0, 40.0,
+             40.0, 40.0, 40.0,
+             40.0, 40.0, 40.0,
+             40.0, 40.0, 40.0]
+  fixed_kd: [1.0, 1.0, 1.0,
+             1.0, 1.0, 1.0,
+             1.0, 1.0, 1.0,
+             1.0, 1.0, 1.0]
+  num_of_dofs: 12
+  wheel_indices: []
+  torque_limits: [33.5, 33.5, 33.5,
+                  33.5, 33.5, 33.5,
+                  33.5, 33.5, 33.5,
+                  33.5, 33.5, 33.5]
+  default_dof_pos: [ 0.00, 0.80, -1.50,
+                     0.00, 0.80, -1.50,
+                     0.00, 0.80, -1.50,
+                     0.00, 0.80, -1.50]
+  joint_names: ["FR_hip_joint", "FR_thigh_joint", "FR_calf_joint",
+                "FL_hip_joint", "FL_thigh_joint", "FL_calf_joint",
+                "RR_hip_joint", "RR_thigh_joint", "RR_calf_joint",
+                "RL_hip_joint", "RL_thigh_joint", "RL_calf_joint"]
+  joint_controller_names: ["FR_hip_controller", "FR_thigh_controller", "FR_calf_controller",
+                           "FL_hip_controller", "FL_thigh_controller", "FL_calf_controller",
+                           "RR_hip_controller", "RR_thigh_controller", "RR_calf_controller",
+                           "RL_hip_controller", "RL_thigh_controller", "RL_calf_controller"]
+  joint_mapping: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
