@@ -1,4 +1,4 @@
-# rl_sar
+# rl_sar_lite
 
 [![ROS2 Jazzy](https://img.shields.io/badge/ros2-jazzy-brightgreen.svg?logo=ros)](https://docs.ros.org/en/jazzy/)
 [![MuJoCo](https://img.shields.io/badge/MuJoCo-3.2.7-orange.svg?logo=mujoco)](https://mujoco.org/)
@@ -105,7 +105,8 @@ MAKEFLAGS="-j4" colcon build --packages-up-to keyboard_input
 ```bash
 cd ~
 git clone https://github.com/yongqingzs/rl_sar.git 
-cd rl_sar && ./build.sh
+cd rl_sar && ./build.sh -c
+./build.sh
 ```
 
 ## Usage
