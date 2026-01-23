@@ -1,103 +1,75 @@
 # rl_sar
 
-## more feature based on rl_sar
-1. Unitree Go1 robot both in simulation and real robot.
-2. Ros2-Jazzy(Ubuntu24.04), mujoco is okay but gazebo doen‘t work(mujoco is all your need because it is more real).
-3. libtorch-arm64 for rk3588 etc.
-4. rknpu2 format for rk3588 etc.
-5. Independent hardware interface(now only for go1, can add other robot easily).This feature allows for easy interface conversion like ros2-control.
-
-[![Ubuntu 20.04/22.04](https://img.shields.io/badge/Ubuntu-20.04/22.04-blue.svg?logo=ubuntu)](https://ubuntu.com/)
-[![macOS](https://img.shields.io/badge/macOS-Experimental-orange.svg?logo=apple)](https://www.apple.com/macos/)
-[![ROS Noetic](https://img.shields.io/badge/ros-noetic-brightgreen.svg?logo=ros)](https://wiki.ros.org/noetic)
-[![ROS2 Foxy/Humble](https://img.shields.io/badge/ros2-foxy/humble-brightgreen.svg?logo=ros)](https://wiki.ros.org/foxy)
-[![Gazebo](https://img.shields.io/badge/Gazebo-Classic-lightgrey.svg?logo=gazebo)](http://gazebosim.org/)
+[![ROS2 Jazzy](https://img.shields.io/badge/ros2-jazzy-brightgreen.svg?logo=ros)](https://docs.ros.org/en/jazzy/)
 [![MuJoCo](https://img.shields.io/badge/MuJoCo-3.2.7-orange.svg?logo=mujoco)](https://mujoco.org/)
 [![License](https://img.shields.io/badge/license-Apache2.0-yellow.svg?logo=apache)](https://opensource.org/license/apache-2-0)
 
-[中文文档](README_CN.md)
-
-This repository provides a framework for simulation verification and physical deployment of robot reinforcement learning algorithms, suitable for quadruped robots, wheeled robots, and humanoid robots. "sar" stands for "simulation and real"
-
-> Supports both **IsaacGym** and **IsaacSim**
->
-> Supports both **ROS-Noetic** and **ROS2-Foxy/Humble**
->
-> Supports both **libtorch** and **onnxruntime**
->
-> Supports both **Linux** and **macOS**(Only support Mujoco simulation)
->
-> Supports both **Gazebo** and **Mujoco**(Partial support)
->
-> Supports both **Locomotion** and **Dance**
-
-Support List:
-
-|Robot Name (rname:=)|Pre-Trained Policy|Gazebo|Mujoco|Real|
-|-|-|-|-|-|
-|Unitree-A1 (a1)|legged_gym (IsaacGym)|✅|❌|✅|
-|Unitree-Go1 (Go1)|legged_gym (IsaacGym)|✅|✅|✅|
-|Unitree-Go2 (go2)|himloco (IsaacGym)</br>robot_lab (IsaacSim)|✅|✅|✅</br>✅|
-|Unitree-Go2W (go2w)|robot_lab (IsaacSim)|✅|✅|✅|
-|Unitree-B2 (b2)|robot_lab (IsaacSim)|✅|✅|⚪|
-|Unitree-B2W (b2w)|robot_lab (IsaacSim)|✅|✅|⚪|
-|Unitree-G1 (g1)|robomimic/locomotion (IsaacGym)</br>robomimic/charleston (IsaacGym)</br>whole_body_tracking/dance_102 (IsaacSim)</br>whole_body_tracking/gangnam_style (IsaacSim)|✅|✅|✅|
-|FFTAI-GR1T1 (gr1t1)</br>(Only available on Ubuntu20.04)|legged_gym (IsaacGym)|✅|❌|⚪|
-|FFTAI-GR1T2 (gr1t2)</br>(Only available on Ubuntu20.04)|legged_gym (IsaacGym)|✅|❌|⚪|
-|zhinao-L4W4 (l4w4)|legged_gym (IsaacGym)|✅|❌|✅|
-|Deeprobotics-Lite3 (lite3)|himloco (IsaacGym)|✅|❌|✅|
-|DDTRobot-Tita (tita)|robot_lab (IsaacSim)|✅|❌|⚪|
-
-> [!IMPORTANT]
-> Python version temporarily suspended maintenance, please use [v2.3](https://github.com/fan-ziqi/rl_sar/releases/tag/v2.3) if necessary, may be re-released in the future.
-
-> [!NOTE]
-> If you want to train policy using IsaacLab(IsaacSim), please use [robot_lab](https://github.com/fan-ziqi/robot_lab) project.
->
-> The order of joints in robot_lab cfg file `joint_names` is the same as that defined in `xxx/robot_lab/config.yaml` in this project.
->
-> Discuss in [Github Discussion](https://github.com/fan-ziqi/rl_sar/discussions) or [Discord](http://www.robotsfan.com/dc_rl_sar).
+A lightweight reinforcement learning deployment framework for quadruped robots. This is a streamlined version of [fan-ziqi/rl_sar](https://github.com/fan-ziqi/rl_sar) with **decoupled communication interfaces**, **enhanced ARM64 support** (RK3588, etc.), and **ROS2 Jazzy compatibility**.
 
 > [!CAUTION]
-> **Disclaimer: User acknowledges that all risks and consequences arising from using this code shall be solely borne by the user, the author assumes no liability for any direct or indirect damages, and proper safety measures must be implemented prior to operation.**
+> **Disclaimer: Users acknowledge that all risks and consequences arising from using this code shall be solely borne by the user. The author assumes no liability for any direct or indirect damages. Proper safety measures must be implemented prior to operation.**
 
-## Preparation
+## Features
 
-Clone the repository
+- 🚀 **Decoupled Hardware Interfaces**: Modular communication protocol support
+- 🦾 **ARM64 Optimized**: Native support for RK3588 and other ARM platforms
+  - LibTorch ARM64 backend
+  - RKNPU2 inference format support
+- 🤖 **Multi-Robot Simulation**: MuJoCo-based simulation for 8+ quadruped robots
+- 🔌 **Flexible Protocol Support**: `free_dog_sdk`, `unitree_sdk2`, `unitree_ros2`
+- 🎮 **State Machine Control**: Multi-policy switching via keyboard/gamepad
+- 🔧 **Easy Extension**: Simple interface for adding new robots/protocols
 
+## Supported Robots
+
+### Simulation (MuJoCo)
+Powered by [unitree_mujoco](https://github.com/yongqingzs/unitree_mujoco):
+
+- Unitree A1
+- Unitree Aliengo
+- Unitree Go1
+- Xiaomi Cyberdog
+- Deep Robotics Lite3
+- Deep Robotics X30
+- Anybotics Anymal B
+- Anybotics Anymal C
+
+### Sim-to-Real
+Currently supports **Unitree quadrupeds** (Go1, Go2) with three communication protocols:
+
+| Protocol | Description | Use Case |
+|----------|-------------|----------|
+| `free_dog_sdk` | Open-source lightweight SDK | Community development |
+| `unitree_sdk2` | Official Unitree SDK v2 | Latest robots (Go2, etc.) |
+| `unitree_ros2` | ROS2 native interface | ROS2 integration |
+
+> **Note**: `unitree_mujoco` uses `unitree_sdk2` message types for simulation communication.
+
+## ROS Compatibility
+
+| ROS Version | Status | Notes |
+|-------------|--------|-------|
+| ROS1 Melodic | ✅ Supported | |
+| ROS1 Noetic | ✅ Supported | |
+| ROS2 Foxy | ✅ Supported | |
+| ROS2 Galactic | ✅ Supported | |
+| ROS2 Humble | ✅ Supported | |
+| **ROS2 Jazzy** | ✅ **Recommended** | Primary development target |
+
+> 💡 **Recommendation**: Use **ROS2 Jazzy** on Ubuntu 24.04 for the best experience.
+
+## Installation
+
+### Prerequisites
+
+#### System Dependencies
 ```bash
-git clone --recursive --depth 1 https://github.com/fan-ziqi/rl_sar.git
+sudo apt install cmake g++ build-essential libyaml-cpp-dev libeigen3-dev \
+                 libboost-all-dev libspdlog-dev libfmt-dev libtbb-dev liblcm-dev
 ```
 
-To update
-
+#### ROS2 Jazzy Dependencies
 ```bash
-git pull
-git submodule update --init --recursive --recommend-shallow --progress
-```
-
-## Dependency
-
-Install the required packages:
-
-```bash
-# Ubuntu
-sudo apt install cmake g++ build-essential libyaml-cpp-dev libeigen3-dev libboost-all-dev libspdlog-dev libfmt-dev libtbb-dev liblcm-dev
-
-# macOS
-brew install boost lcm yaml-cpp tbb libomp pkg-config glfw
-```
-
-If you need to use ROS, install the following dependency packages:
-
-```bash
-# ros-noetic (Ubuntu20.04)
-sudo apt install ros-noetic-teleop-twist-keyboard ros-noetic-controller-interface ros-noetic-gazebo-ros-control ros-noetic-joint-state-controller ros-noetic-effort-controllers ros-noetic-joint-trajectory-controller ros-noetic-joy ros-noetic-ros-control ros-noetic-ros-controllers ros-noetic-controller-manager
-
-# ros2-foxy (Ubuntu20.04) / ros2-humble (Ubuntu22.04)
-sudo apt install ros-$ROS_DISTRO-teleop-twist-keyboard ros-$ROS_DISTRO-ros2-control ros-$ROS_DISTRO-ros2-controllers ros-$ROS_DISTRO-control-toolbox ros-$ROS_DISTRO-robot-state-publisher ros-$ROS_DISTRO-joint-state-publisher-gui ros-$ROS_DISTRO-gazebo-ros2-control ros-$ROS_DISTRO-gazebo-ros-pkgs ros-$ROS_DISTRO-xacro
-
-# ros2-jazzy (Ubuntu24.04)
 sudo apt install \
   ros-jazzy-teleop-twist-keyboard \
   ros-jazzy-ros2-control \
@@ -107,453 +79,200 @@ sudo apt install \
   ros-jazzy-joint-state-publisher-gui \
   ros-jazzy-xacro \
   ros-jazzy-ros-gz-sim \
-  ros-jazzy-ros-gz-bridge
+  ros-jazzy-ros-gz-bridge \
+  ros-jazzy-rosidl-generator-dds-idl
+
 sudo apt install libopenblas-dev libopenblas0 liblapack-dev liblapack3
 ```
 
-## Compilation
+### Build from Source
 
-Execute the following script in the project root directory to compile the entire project:
-
+#### 1. Install MuJoCo Simulator
 ```bash
-./build.sh
+mkdir -p ~/jazzy_ws/src && cd ~/jazzy_ws/src
+git clone https://github.com/yongqingzs/unitree_mujoco.git
+# Follow unitree_mujoco installation guide
 ```
 
-To compile specific packages individually, you can append the package names:
-
+#### 2. Install Keyboard Control (Optional: Gamepad Control)
 ```bash
-./build.sh package1 package2
+cd ~/jazzy_ws/src
+git clone https://github.com/yongqingzs/quadruped_ros2_control.git
+MAKEFLAGS="-j4" colcon build --packages-up-to keyboard_input
 ```
 
-To clean the build, use the following command. This will remove all compiled outputs and created symbolic links:
-
+#### 3. Build rl_sar
 ```bash
-./build.sh -c  # or ./build.sh --clean
+cd ~
+git clone https://github.com/yongqingzs/rl_sar.git 
+cd rl_sar && ./build.sh
 ```
 
-If simulation is not needed and you only want to run on the robot, you can compile using CMake while disabling ROS (the compiled executables will be in `cmake_build/bin` and libraries in `cmake_build/lib`):
-
-```bash
-./build.sh -m  # or ./build.sh --cmake
-```
-
-To use the Mujoco simulator
-
-```bash
-./build.sh -mj  # or ./build.sh --mujoco
-```
-
-For detailed usage instructions, you can check them via `./build.sh -h`:
-
-```bash
-Usage: ./build.sh [OPTIONS] [PACKAGE_NAMES...]
-
-Options:
-  -c, --clean    Clean workspace (remove symlinks and build artifacts)
-  -m, --cmake    Build using CMake (for hardware deployment only)
-  -mj,--mujoco   Build with MuJoCo simulator support (CMake only)"
-  -h, --help     Show this help message
-
-Examples:
-  ./build.sh                    # Build all ROS packages
-  ./build.sh package1 package2  # Build specific ROS packages
-  ./build.sh -c                 # Clean all symlinks and build artifacts
-  ./build.sh --clean package1   # Clean specific package and build artifacts
-  ./build.sh -m                 # Build with CMake for hardware deployment
-  ./build.sh -mj                # Build with CMake and MuJoCo simulator support
-```
-
-> [!TIP]
-> If catkin build report errors: `Unable to find either executable 'empy' or Python module 'em'`, run `catkin config -DPYTHON_EXECUTABLE=/usr/bin/python3` before `catkin build`
-
-## Running
-
-In the following text, **\<ROBOT\>/\<CONFIG\>** is used to represent different environments, such as `go2/himloco` and `go2w/robot_lab`.
-
-Before running, copy the trained pt model file to `rl_sar/src/rl_sar/policy/<ROBOT>/<CONFIG>`, and configure the parameters in `<ROBOT>/<CONFIG>/config.yaml` and `<ROBOT>/base.yaml`.
+## Usage
 
 ### Simulation
 
-#### Gazebo
-
-Open a terminal, launch the gazebo simulation environment
-
+**Terminal 1** - Launch MuJoCo simulator:
 ```bash
-# ROS1
-source devel/setup.bash
-roslaunch rl_sar gazebo.launch rname:=<ROBOT>
-
-# ROS2
-source install/setup.bash
-ros2 launch rl_sar gazebo.launch.py rname:=<ROBOT>
+# Robot type configured in simulate/config.yaml
+unitree_mujoco
 ```
 
-Open a new terminal, launch the control program
-
+**Terminal 2** - Keyboard control:
 ```bash
-# ROS1
-source devel/setup.bash
-rosrun rl_sar rl_sim
-
-# ROS2
-source install/setup.bash
-ros2 run rl_sar rl_sim
+# Key mappings:
+# 1: Lie down  2: Stand up  3: Policy 1  4: Policy 2  5: Policy 3
+# Note: Must stand up (2) before switching policies
+ros2 run keyboard_input keyboard_input
 ```
 
-> [!TIP]
-> If you cannot see the robot after launching Gazebo in Ubuntu 22.04, it means the robot was initialized outside the field of view. The robot's position will be automatically reset after launching rl_sim. If the robot falls over during the standing process, use the keyboard `R` or the gamepad `RB+Y` to reset the robot.
-
-If Gazebo cannot be opened when you start it for the first time, you need to download the model package
-
+**Terminal 3** - RL controller:
 ```bash
-git clone https://github.com/osrf/gazebo_models.git ~/.gazebo/models
+ros2 run rl_sar rl_real_bridge
 ```
 
-#### Mujoco
+### Sim-to-Real
 
+**Terminal 1** - Keyboard control:
 ```bash
-./cmake_build/bin/rl_sim_mujoco <ROBOT> <SCENE>
-# Example: ./cmake_build/bin/rl_sim_mujoco g1 scene_29dof
+ros2 run keyboard_input keyboard_input
 ```
 
-### Control with Mobile Web (Experimental)
-
-Install dependencies
-
+**Terminal 2** - RL controller:
 ```bash
-sudo apt install ros-${ROS_DISTRO}-rosbridge-suite
-sudo apt install ros-${ROS_DISTRO}-web-video-server
-
-# If you are using a ROS2 version other than Humble, Jazz, and Rolling, you need to build `web_video_server` from source
-cd <your_ros2_workspace>/src
-git clone https://github.com/RobotWebTools/web_video_server.git
-cd <your_ros2_workspace>
-colcon build --packages-select web_video_server
+# Switch communication protocol in policy/bridge/base.yaml
+# hardware_protocol: free_dog_sdk | unitree_sdk2 | unitree_ros2
+ros2 run rl_sar rl_real_bridge
 ```
 
-Run rosbridge and web_video_server in robot
+> **Note**: `rl_real_go1` is kept for version compatibility. Use `rl_real_bridge` for all sim/real testing.
 
+## Architecture
+
+### Hardware Interface Design
+
+The project uses a **plugin-based architecture** for hardware communication:
+
+```
+library/core/hardware_interface/
+├── hardware_interface_base.hpp          # Abstract base class
+├── free_dog_sdk/                        # Protocol 1
+│   ├── hardware_interface_free_dog_sdk.hpp
+│   └── hardware_interface_free_dog_sdk.cpp
+├── unitree_sdk2/                        # Protocol 2
+│   ├── hardware_interface_unitree_sdk2.hpp
+│   └── hardware_interface_unitree_sdk2.cpp
+└── unitree_ros2/                        # Protocol 3
+    ├── hardware_interface_unitree_ros2.hpp
+    └── hardware_interface_unitree_ros2.cpp
+```
+
+**Key Components**:
+- `hardware_interface_base.hpp`: Defines the interface contract (`init()`, `send()`, `receive()`)
+- Protocol subdirectories: Isolated implementations for each communication method
+- `rl_real_bridge`: Unified entry point that dynamically selects protocol at runtime
+
+### Adding New Robots/Protocols
+
+To add support for a new robot or protocol:
+
+1. **Create protocol directory**:
+   ```bash
+   mkdir library/core/hardware_interface/new_protocol
+   ```
+
+2. **Implement interface** in `new_protocol/hardware_interface_new_protocol.cpp`:
+   ```cpp
+   class HardwareInterfaceNewProtocol : public HardwareInterfaceBase {
+   public:
+       void init() override;
+       void send(const RobotCmd& cmd) override;
+       RobotState receive() override;
+   };
+   ```
+
+3. **Register in bridge** (`src/rl_real_bridge.cpp`):
+   ```cpp
+   #ifdef USE_NEW_PROTOCOL
+   hardware_interface_ = std::make_shared<HardwareInterfaceNewProtocol>();
+   #endif
+   ```
+
+4. **Update CMakeLists.txt**:
+   ```cmake
+   option(USE_NEW_PROTOCOL "Use new protocol" ON)
+   if(USE_NEW_PROTOCOL)
+       add_subdirectory(library/core/hardware_interface/new_protocol)
+   endif()
+   ```
+
+The modular design ensures **zero coupling** between different protocols - adding or removing one doesn't affect others.
+
+## Configuration
+
+Before running, prepare:
+
+1. **Copy trained policy** to `policy/<robot>/<config>/`:
+   ```
+   policy/
+   └── bridge/
+       ├── base.yaml              # Hardware/runtime config
+       └── <your_policy>/
+           ├── config.yaml        # Policy parameters
+           └── model.pt           # PyTorch model
+   ```
+
+2. **Configure parameters**:
+   - `base.yaml`: Communication protocol, motor limits, control frequency
+   - `config.yaml`: Observation/action dimensions, normalization params
+
+## Command Reference
+
+### Build Options
 ```bash
-# ROS1
-roslaunch rosbridge_server rosbridge_websocket.launch
-rosrun web_video_server web_video_server
-
-# ROS2
-ros2 launch rosbridge_server rosbridge_websocket_launch.xml
-ros2 run web_video_server web_video_server
+./build.sh              # Build all ROS2 packages
+./build.sh -c           # Clean workspace
+./build.sh -m           # CMake-only build (no ROS)
+./build.sh -mj          # Build with MuJoCo support
 ```
 
-Visit [http://robot.robotsfan.com/](http://robot.robotsfan.com/), fill in the IP address and port, check the settings page in the upper right corner, then connect to the robot. After entering the control page, turn the screen horizontally and click the full screen button in the upper left corner, Then you can control the robot using your phone's browser!
-
-### Control with Gamepad or Keyboard
-
-|Gamepad Control|Keyboard Control|Description|
-|---|---|---|
-|**Basic**|||
-|A|Num0|Move the robot from its initial program pose to the `default_dof_pos` defined in `base.yaml` using position control interpolation|
-|B|Num9|Move the robot from its current position to the initial program pose using position control interpolation|
-|X|N|Toggle navigation mode (disables velocity commands, receives `cmd_vel` topic)|
-|Y|N/A|N/A|
-|**Simulation**|||
-|RB+Y|R|Reset Gazebo environment (stand up fallen robot)|
-|RB+X|Enter|Toggle Gazebo run/stop (default: running state)|
-|**Motor**|||
-|LB+A|M|N/A (Recommended for motor enable)|
-|LB+B|K|N/A (Recommended for motor disable)|
-|LB+X|P|N/A Motor passive mode (`kp=0, kd=8`)|
-|LB+RB|N/A|N/A (Recommended for emergency stop)|
-|**Skill**|||
-|RB+DPadUp|Num1|Basic Locomotion|
-|RB+DPadDown|Num2|Skill 2|
-|RB+DPadLeft|Num3|Skill 3|
-|RB+DPadRight|Num4|Skill 4|
-|LB+DPadUp|Num5|Skill 5|
-|LB+DPadDown|Num6|Skill 6|
-|LB+DPadLeft|Num7|Skill 7|
-|LB+DPadRight|Num8|Skill 8|
-|**Movement**|||
-|LY Axis|W/S|Forward/Backward movement (X-axis)|
-|LX Axis|A/D|Left/Right movement (Y-axis)|
-|RX Axis|Q/E|Yaw rotation|
-|N/A (Release joystick)|Space|Reset all control commands to zero|
-
-### Real Robots
-
-<details>
-
-<summary>Unitree A1 (Click to expand)</summary>
-
-Unitree A1 can be connected using both wireless and wired methods:
-
-- Wireless: Connect to the Unitree starting with WIFI broadcasted by the robot **(Note: Wireless connection may lead to packet loss, disconnection, or even loss of control, please ensure safety)**
-- Wired: Use an Ethernet cable to connect any port on the computer and the robot, configure the computer IP as 192.168.123.162, and the netmask as 255.255.255.0
-
-Open a new terminal and start the control program
-
-```bash
-# ROS1
-source devel/setup.bash
-rosrun rl_sar rl_real_a1
-
-# ROS2
-source install/setup.bash
-ros2 run rl_sar rl_real_a1
-
-# CMake
-./cmake_build/bin/rl_real_a1
-```
-
-</details>
-
-<details>
-
-<summary>Unitree Go2/Go2W/G1(29dofs) (Click to expand)</summary>
-
-#### Ethernet Connection
-
-Connect one end of the Ethernet cable to the Go2/Go2W/G1(29dofs) robot and the other end to your computer. Then, enable USB Ethernet on the computer and configure it. The IP address of the onboard computer on the Go2 robot is `192.168.123.161`, so the computer's USB Ethernet address should be set to the same network segment as the robot. For example, enter `192.168.123.222` in the "Address" field (you can replace `222` with another number).
-
-Use the `ifconfig` command to find the name of the network interface for the 123 network segment, such as `enxf8e43b808e06`. In the following steps, replace `<YOUR_NETWORK_INTERFACE>` with the actual network interface name.
-
-Go2:
-
-Open a new terminal and start the control program. If you are controlling Go2W, you need to add `wheel` after the command, otherwise leave it blank.
-
-```bash
-# ROS1
-source devel/setup.bash
-rosrun rl_sar rl_real_go2 <YOUR_NETWORK_INTERFACE> [wheel]
-
-# ROS2
-source install/setup.bash
-ros2 run rl_sar rl_real_go2 <YOUR_NETWORK_INTERFACE> [wheel]
-
-# CMake
-./cmake_build/bin/rl_real_go2 <YOUR_NETWORK_INTERFACE> [wheel]
-```
-
-G1(29dofs):
-
-Turn on the robot and lift it up, press L2+R2 to enter the debugging mode, then open a new terminal and start the control program.
-
-```bash
-# ROS1
-source devel/setup.bash
-rosrun rl_sar rl_real_g1 <YOUR_NETWORK_INTERFACE>
-
-# ROS2
-source install/setup.bash
-ros2 run rl_sar rl_real_g1 <YOUR_NETWORK_INTERFACE>
-
-# CMake
-./cmake_build/bin/rl_real_g1 <YOUR_NETWORK_INTERFACE>
-```
-
-#### Deploying on the Onboard Jetson
-
-Connect your computer to the robot using the Ethernet cable and log into the Jetson onboard computer. The default password is `123`:
-
-```bash
-ssh unitree@192.168.123.18
-```
-
-Connect the phone to the USB of the robot, enable USB network sharing on the phone, pull the code and compile it using `./build.sh -m`. After successful compilation, run:
-
-```bash
-# Go2:
-./cmake_build/bin/rl_real_go2 <YOUR_NETWORK_INTERFACE> [wheel]
-
-# G1(29dofs):
-./cmake_build/bin/rl_real_g1 <YOUR_NETWORK_INTERFACE>
-```
-
-Then you can unplug the phone and network cable, and control the robot using the remote controller.
-
-#### Auto-Start on Boot
-
-If you need to set up auto-start on boot, you can follow this process:
-
-Create a service file
-
-```bash
-sudo touch /etc/systemd/system/rl_sar.service
-```
-
-Write the following content, assuming the rl_sar project is in the `~/rl_sar` directory
-
-```
-[Unit]
-Description=RL SAR Service
-After=network.target
-
-[Service]
-Type=simple
-User=unitree
-WorkingDirectory=/home/unitree/rl_sar
-ExecStart=/home/unitree/rl_sar/cmake_build/bin/rl_real_go2 eth0 wheel
-Restart=on-failure
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Reload the systemd configuration:
-
-```bash
-sudo systemctl daemon-reload
-```
-
-Enable auto-start on boot:
-
-```bash
-sudo systemctl enable rl_sar.service
-```
-
-Disable auto-start on boot:
-
-```bash
-sudo systemctl disable rl_sar.service
-```
-
-Start the service:
-
-```bash
-sudo systemctl start rl_sar.service
-```
-
-Stop the service:
-
-```bash
-sudo systemctl stop rl_sar.service
-```
-
-Restart the service:
-
-```bash
-sudo systemctl restart rl_sar.service
-```
-
-View service logs:
-
-```bash
-sudo journalctl -u rl_sar.service -f
-```
-
-After reboot, the robot will first run the built-in standing program. After the rl_sar service starts, it will automatically dampen down, and then can be controlled normally using the remote controller.
-
-</details>
-
-<details>
-
-<summary>Deeprobotics Lite3 (Click to expand)</summary>
-
-Deeprobotics Lite3 can be connected using wireless method.
-(Wired not tested. For some versions of Lite3, the wired Ethernet port may requires additional installation.)
-
-- Connect to the Lite3 starting with WIFI broadcasted by the robot. We strongly recommand testing the communication the Lite3 using [Lite3_Motion_SDK](https://github.com/DeepRoboticsLab/Lite3_MotionSDK) before use.
- **(Note: Wireless connection may lead to packet loss, disconnection, or even loss of control, please ensure safety)**
-
-- Determine the IP address and port number of Lite3, and modify **line 46-48 in rl_sar/src/rl_real_lite3.cpp**.
-- Then Update **jy_exe/conf/network.toml** on the Lite3 motion host to set the IP and port to that of the local machine running ROS2, enabling communication.
-
-> [!CAUTION]
-> **Recheck joint mapping parameters!<br>Recheck rl_sar/policy/himloco/config.yaml. The default joint mapping in Sim2Sim configuration differs from that used in real. If not updated accordingly, this mismatch may lead to incorrect robot behavior and potential safety hazards**
-
-Lite3 also support control using Deeprobotics Retroid gamepad, refer to [Deeprobotics Gamepad](https://github.com/DeepRoboticsLab/gamepad)
-
-Open a new terminal and start the control program
-
-```bash
-# ROS1
-source devel/setup.bash
-rosrun rl_sar rl_real_lite3
-
-# ROS2
-source install/setup.bash
-ros2 run rl_sar rl_real_lite3
-
-# CMake
-./cmake_build/bin/rl_real_lite3
-```
-
-</details>
-
-### Train the actuator network
-
-Take A1 as an example below
-
-1. Uncomment `#define CSV_LOGGER` in the top of `rl_real_a1.hpp`. You can also modify the corresponding part in the simulation program to collect simulation data for testing the training process.
-2. Run the control program, and the program will log all data in `src/rl_sar/policy/<ROBOT>/motor.csv`.
-3. Stop the control program and start training the actuator network. Note that `rl_sar/src/rl_sar/policy/` is omitted before the following paths.
-    ```bash
-    rosrun rl_sar actuator_net.py --mode train --data a1/motor.csv --output a1/motor.pt
-    ```
-4. Verify the trained actuator network.
-    ```bash
-    rosrun rl_sar actuator_net.py --mode play --data a1/motor.csv --output a1/motor.pt
-    ```
-
-## Add Your Robot
-
-The following uses **\<ROBOT\>/\<CONFIG\>** to represent your robot environment. You only need to create or modify the following files, and the names must exactly match those shown below. (You can refer to the corresponding files in go2w as examples.)
-
-```yaml
-# your robot description
-rl_sar/src/rl_sar_zoo/<ROBOT>_description/CMakeLists.txt
-rl_sar/src/rl_sar_zoo/<ROBOT>_description/package.ros1.xml
-rl_sar/src/rl_sar_zoo/<ROBOT>_description/package.ros2.xml
-rl_sar/src/rl_sar_zoo/<ROBOT>_description/xacro/robot.xacro
-rl_sar/src/rl_sar_zoo/<ROBOT>_description/xacro/gazebo.xacro
-rl_sar/src/rl_sar_zoo/<ROBOT>_description/config/robot_control.yaml
-rl_sar/src/rl_sar_zoo/<ROBOT>_description/config/robot_control_ros2.yaml
-
-# your policy
-policy/<ROBOT>/base.yaml  # This file must follow the physical robot's joint order
-policy/<ROBOT>/<CONFIG>/config.yaml
-policy/<ROBOT>/<CONFIG>/<POLICY>.pt  # for libtorch, note that exporting JIT is required
-policy/<ROBOT>/<CONFIG>/<POLICY>.onnx  # for onnxruntime
-
-# fsm for robot
-src/rl_sar/fsm_robot/fsm_<ROBOT>.hpp
-src/rl_sar/fsm_robot/fsm_all.hpp
-
-# your real robot code
-rl_sar/src/rl_sar/src/rl_real_<ROBOT>.cpp  # You can customize the forward() function as needed to adapt to your policy
-```
+### Control Keys
+
+| Key | Function |
+|-----|----------|
+| `1` | Lie down (damping mode) |
+| `2` | Stand up to default pose |
+| `3-5` | Switch to Policy 1/2/3 |
+| `W/S` | Forward/Backward |
+| `A/D` | Strafe Left/Right |
+| `Q/E` | Rotate CCW/CW |
+| `Space` | Stop (reset velocities) |
+
+## Troubleshooting
+
+**Issue**: `unitree_mujoco` cannot find robot model  
+**Solution**: Check `simulate/config.yaml` for correct robot name
+
+**Issue**: Real robot not responding  
+**Solution**: Verify `hardware_protocol` in `policy/bridge/base.yaml` matches your setup
+
+**Issue**: Build fails with protocol errors  
+**Solution**: Ensure submodules are updated: `git submodule update --init --recursive`
 
 ## Contributing
 
-Wholeheartedly welcome contributions from the community to make this framework mature and useful for everyone. These may happen as bug reports, feature requests, or code contributions.
+Contributions are welcome! Please ensure:
+- New protocols follow the `HardwareInterfaceBase` interface
+- Code is tested in both simulation and real hardware (if applicable)
+- Documentation is updated accordingly
 
-[List of contributors](CONTRIBUTORS.md)
+## License
 
-## Citation
+Apache License 2.0 - see [LICENSE](LICENSE) for details
 
-Please cite the following if you use this code or parts of it:
+## Acknowledgments
 
-```
-@software{fan-ziqi2024rl_sar,
-  author = {fan-ziqi},
-  title = {rl_sar: Simulation Verification and Physical Deployment of Robot Reinforcement Learning Algorithm.},
-  url = {https://github.com/fan-ziqi/rl_sar},
-  year = {2024}
-}
-```
-
-## Acknowledgements
-
-The project uses some code from the following open-source code repositories:
-
-- [unitreerobotics/unitree_sdk2-2.0.0](https://github.com/unitreerobotics/unitree_sdk2/tree/2.0.0)
-- [unitreerobotics/unitree_legged_sdk-v3.2](https://github.com/unitreerobotics/unitree_legged_sdk/tree/v3.2)
-- [unitreerobotics/unitree_guide](https://github.com/unitreerobotics/unitree_guide)
-- [unitreerobotics/unitree_mujoco](https://github.com/unitreerobotics/unitree_mujoco)
-- [google-deepmind/mujoco-3.2.7](https://github.com/google-deepmind/mujoco)
-- [mertgungor/unitree_model_control](https://github.com/mertgungor/unitree_model_control)
-- [Improbable-AI/walk-these-ways](https://github.com/Improbable-AI/walk-these-ways)
-- [ccrpRepo/RoboMimic_Deploy](https://github.com/ccrpRepo/RoboMimic_Deploy)
-- [Deeprobotics/Lite3_Motion_SDK](https://github.com/DeepRoboticsLab/Lite3_MotionSDK)
-- [chengyangkj/ROS_Flutter_Gui_App](https://github.com/chengyangkj/ROS_Flutter_Gui_App)
+- [fan-ziqi/rl_sar](https://github.com/fan-ziqi/rl_sar) - Original framework
+- [legubiao/quadruped_ros2_control](https://github.com/legubiao/quadruped_ros2_control.git) - Keyboard/gamepad control
+- [unitree_mujoco](https://github.com/yongqingzs/unitree_mujoco) - MuJoCo simulation backend
+- Unitree Robotics - Hardware support and SDKs
