@@ -101,11 +101,13 @@ git clone https://github.com/yongqingzs/quadruped_ros2_control.git
 MAKEFLAGS="-j4" colcon build --packages-up-to keyboard_input
 ```
 
-#### 3. Build rl_sar
+#### 3. Build rl_sar_lite
 ```bash
 cd ~
-git clone https://github.com/yongqingzs/rl_sar.git 
-cd rl_sar && ./build.sh -c
+git clone https://github.com/yongqingzs/rl_sar_lite.git
+git submodule update --init --recursive --recommend-shallow --progress
+
+cd rl_sar_lite && ./build.sh -c
 ./build.sh
 ```
 
@@ -234,7 +236,7 @@ Before running, prepare:
 ./build.sh              # Build all ROS2 packages
 ./build.sh -c           # Clean workspace
 ./build.sh -m           # CMake-only build (no ROS)
-./build.sh -mj          # Build with MuJoCo support
+./build.sh -mj          # Build with MuJoCo support(Not recommended, use unitree_mujoco instead)
 ```
 
 ### Control Keys
