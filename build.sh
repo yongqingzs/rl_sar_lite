@@ -154,6 +154,7 @@ clean_workspace() {
     print_header "[Cleaning Workspace]"
 
     local cyclonedds_ws_path="${SCRIPT_DIR}/src/rl_sar/library/thirdparty/robot_sdk/unitree/unitree_ros2/cyclonedds_ws"
+    local third_ws_path="${SCRIPT_DIR}/src/rl_sar/library/thirdparty/third_ws"
 
     # Show what will be cleaned
     print_info "The following will be cleaned:"
@@ -170,6 +171,7 @@ clean_workspace() {
     echo "  - directory logs/"
     echo "  - directory .catkin_tools/"
     echo "  - CycloneDDS workspace build artifacts in $cyclonedds_ws_path"
+    echo "  - Third-party workspace build artifacts in $third_ws_path"
 
     # Ask for confirmation
     if [ ${#packages[@]} -eq 0 ]; then
@@ -223,6 +225,12 @@ clean_workspace() {
     if [ -d "$cyclonedds_ws_path" ]; then
         rm -rf "$cyclonedds_ws_path/build" "$cyclonedds_ws_path/install" "$cyclonedds_ws_path/log"
         print_info "Cleaned CycloneDDS workspace build artifacts"
+    fi
+
+    # Clean third-party workspace build artifacts
+    if [ -d "$third_ws_path" ]; then
+        rm -rf "$third_ws_path/build" "$third_ws_path/install" "$third_ws_path/log"
+        print_info "Cleaned third-party workspace build artifacts"
     fi
 
     print_success "Clean completed!"
