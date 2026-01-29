@@ -12,6 +12,12 @@
 #include <atomic>
 #include <mutex>
 
+#ifdef USE_ROS2
+#include <rclcpp/rclcpp.hpp>
+#include <unitree_go/msg/low_state.hpp>
+#include <unitree_go/msg/low_cmd.hpp>
+#endif
+
 /**
  * Hardware interface implementation using free_dog_sdk (FDSC)
  * This adapter wraps the original free_dog_sdk communication
@@ -43,9 +49,19 @@ public:
 
     bool IsReady() const override;
 
+#ifdef USE_ROS2
+    void EnableRos2Bridge(bool enable, std::shared_ptr<rclcpp::Node> node = nullptr);
+#endif
+
 private:
     void RecvLoop();
     void SendLoop();
+    
+#ifdef USE_ROS2
+    void Ros2PublishLoop();
+    void PublishLowState();
+    void PublishLowCmd();
+#endif
 
     std::string connection_settings_;
     
@@ -67,6 +83,14 @@ private:
     mutable std::mutex buffer_mutex_;
     
     static constexpr int NUM_JOINTS = 12;
+    
+#ifdef USE_ROS2
+    std::atomic<bool> ros2_bridge_enabled_{false};
+    std::shared_ptr<rclcpp::Node> ros2_node_;
+    rclcpp::Publisher<unitree_go::msg::LowState>::SharedPtr state_pub_;
+    rclcpp::Publisher<unitree_go::msg::LowCmd>::SharedPtr cmd_pub_;
+    std::shared_ptr<LoopFunc> ros2_publish_loop_;
+#endif
 };
 
 #endif // HARDWARE_INTERFACE_FREE_DOG_SDK_HPP

@@ -643,6 +643,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     # Add hardware interface source files
     set(HARDWARE_INTERFACE_SOURCES
         library/core/hardware_interface/free_dog_sdk/hardware_interface_free_dog_sdk.cpp
+        library/core/hardware_interface/shared_memory/hardware_interface_shared_memory.cpp
     )
     if(UNITREE_ROS2_AVAILABLE)
         list(APPEND HARDWARE_INTERFACE_SOURCES
@@ -739,6 +740,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     # Add hardware interface source files
     set(HARDWARE_INTERFACE_SOURCES
         library/core/hardware_interface/free_dog_sdk/hardware_interface_free_dog_sdk.cpp
+        library/core/hardware_interface/shared_memory/hardware_interface_shared_memory.cpp
     )
     if(UNITREE_ROS2_AVAILABLE)
         list(APPEND HARDWARE_INTERFACE_SOURCES

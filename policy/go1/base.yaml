@@ -13,7 +13,12 @@ go1:
   #   "free_dog_sdk" (default) - Original SDK, loopback testing
   #   "unitree_ros2"           - ROS2 bridge communication
   #   "unitree_sdk2"           - Direct DDS communication (low latency)
+  #   "shared_memory"          - Shared memory IPC (for custom motor control)
   hardware_protocol: "unitree_sdk2"
+  
+  # ROS2 bridge for free_dog_sdk (publish state/cmd to ROS2 topics)
+  # Only used when hardware_protocol is "free_dog_sdk"
+  ros2_bridge_enabled: false
   
   # SDK2-specific parameters (only used when hardware_protocol is "unitree_sdk2")
   network_interface: "lo"  # Network interface for DDS ("lo" for loopback, "eth0" for real robot)

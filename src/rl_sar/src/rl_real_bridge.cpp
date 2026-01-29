@@ -4,6 +4,7 @@
 */
 
 #include "rl_real_bridge.hpp"
+#include "shared_memory/hardware_interface_shared_memory.hpp"
 
 RL_Real::RL_Real(int argc, char **argv)
 {
@@ -102,7 +103,9 @@ void RL_Real::InitializeHardwareInterface()
     
     std::cout << LOGGER::INFO << "Initializing hardware interface: " << protocol_str << std::endl;
     
-    if (protocol_str == "unitree_ros2") {
+    if (protocol_str == "shared_memory") {
+        hardware_interface_ = std::make_unique<HardwareInterfaceSharedMemory>();
+    } else if (protocol_str == "unitree_ros2") {
 #ifdef UNITREE_ROS2_AVAILABLE
         hardware_protocol_ = HardwareProtocol::UNITREE_ROS2;
         hardware_interface_ = std::make_unique<HardwareInterfaceUnitreeRos2>(ros2_node);
@@ -146,6 +149,19 @@ void RL_Real::InitializeHardwareInterface()
     }
     
     hardware_interface_->Start();
+    
+#if defined(USE_ROS2) && defined(USE_ROS)
+    // Enable ROS2 bridge for free_dog_sdk if configured
+    if (protocol_str == "free_dog_sdk") {
+        bool ros2_bridge_enabled = this->params.Get<bool>("ros2_bridge_enabled", false);
+        if (ros2_bridge_enabled) {
+            auto fdsc_interface = dynamic_cast<HardwareInterfaceFreeDogSdk*>(hardware_interface_.get());
+            if (fdsc_interface && ros2_node) {
+                fdsc_interface->EnableRos2Bridge(true, ros2_node);
+            }
+        }
+    }
+#endif
     
     // Wait for hardware interface to be ready
     std::cout << LOGGER::INFO << "Waiting for hardware interface to be ready..." << std::endl;

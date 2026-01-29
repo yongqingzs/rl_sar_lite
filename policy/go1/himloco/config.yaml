@@ -3,7 +3,7 @@
 
 go1/himloco:
 # him1119_2200 kp: 20
-  model_name: "policy_AMPLOCO_0121_v0.pt"
+  model_name: "ahim0129_5000.pt"
   num_observations: 45
   observations: ["commands", "ang_vel", "gravity_vec", "dof_pos", "dof_vel", "actions"]
   observations_history: [0, 1, 2, 3, 4, 5]  # 0 is the latest observation
@@ -33,14 +33,14 @@ go1/himloco:
           0.5, 0.5, 0.5,
           0.5, 0.5, 0.5,
           0.5, 0.5, 0.5]
-#   rl_kp: [30, 30, 30,
-#           30, 30, 30,
-#           30, 30, 30,
-#           30, 30, 30]
-#   rl_kd: [0.8, 0.8, 0.8,
-#           0.8, 0.8, 0.8,
-#           0.8, 0.8, 0.8,
-#           0.8, 0.8, 0.8]
+#   rl_kp: [28, 28, 28,
+#           28, 28, 28,
+#           28, 28, 28,
+#           28, 28, 28]
+#   rl_kd: [0.7, 0.7, 0.7,
+#           0.7, 0.7, 0.7,
+#           0.7, 0.7, 0.7,
+#           0.7, 0.7, 0.7]
   fixed_kp: [40.0, 40.0, 40.0,
              40.0, 40.0, 40.0,
              40.0, 40.0, 40.0,
