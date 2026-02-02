@@ -1,0 +1,13 @@
+package exlcm;
+
+struct low_motor_ctrl
+{
+    int64_t  timestamp;
+
+    float tor_des;  // 目标转矩
+    float spd_des;  // 目标速度
+    float pos_des;  // 目标位置
+    float k_pos;    // 位置增益
+    float k_spd;    // 速度增益
+    int16_t mode_set;
+}

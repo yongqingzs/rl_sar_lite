@@ -5,6 +5,7 @@
 
 #include "rl_real_bridge.hpp"
 #include "shared_memory/hardware_interface_shared_memory.hpp"
+#include "lcm/hardware_interface_lcm.hpp"
 
 RL_Real::RL_Real(int argc, char **argv)
 {
@@ -105,6 +106,9 @@ void RL_Real::InitializeHardwareInterface()
     
     if (protocol_str == "shared_memory") {
         hardware_interface_ = std::make_unique<HardwareInterfaceSharedMemory>();
+    } else if (protocol_str == "lcm") {
+        hardware_interface_ = std::make_unique<HardwareInterfaceLCM>();
+        std::cout << LOGGER::INFO << "Using LCM protocol" << std::endl;
     } else if (protocol_str == "unitree_ros2") {
 #ifdef UNITREE_ROS2_AVAILABLE
         hardware_protocol_ = HardwareProtocol::UNITREE_ROS2;

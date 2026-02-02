@@ -112,6 +112,8 @@ if(NOT USE_CMAKE)
         find_package(std_srvs REQUIRED)
         find_package(geometry_msgs REQUIRED)
         find_package(realtime_tools REQUIRED)
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(LCM REQUIRED lcm)
         if(USE_GAZEBO)
             find_package(ros_gz_sim REQUIRED)
             find_package(ros_gz_interfaces REQUIRED)
@@ -489,7 +491,10 @@ include_directories(
     library/core/hardware_interface/free_dog_sdk
     library/core/hardware_interface/unitree_ros2
     library/core/hardware_interface/unitree_sdk2
+    library/core/hardware_interface/lcm
+    library/core/hardware_interface/lcm/types
     fsm_robot
+    ${LCM_INCLUDE_DIRS}
 )
 
 # library for inference runtime
@@ -644,6 +649,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     set(HARDWARE_INTERFACE_SOURCES
         library/core/hardware_interface/free_dog_sdk/hardware_interface_free_dog_sdk.cpp
         library/core/hardware_interface/shared_memory/hardware_interface_shared_memory.cpp
+        library/core/hardware_interface/lcm/hardware_interface_lcm.cpp
     )
     if(UNITREE_ROS2_AVAILABLE)
         list(APPEND HARDWARE_INTERFACE_SOURCES
@@ -665,6 +671,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
         rl_sdk
         observation_buffer
             ${YAML_CPP_LIBRARIES}
+            ${LCM_LIBRARIES}
     )
     if(NOT USE_CMAKE)
         if($ENV{ROS_DISTRO} MATCHES "noetic")
@@ -741,6 +748,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
     set(HARDWARE_INTERFACE_SOURCES
         library/core/hardware_interface/free_dog_sdk/hardware_interface_free_dog_sdk.cpp
         library/core/hardware_interface/shared_memory/hardware_interface_shared_memory.cpp
+        library/core/hardware_interface/lcm/hardware_interface_lcm.cpp
     )
     if(UNITREE_ROS2_AVAILABLE)
         list(APPEND HARDWARE_INTERFACE_SOURCES
@@ -762,6 +770,7 @@ if(SYSTEM_TYPE STREQUAL "Linux")
         rl_sdk
         observation_buffer
             ${YAML_CPP_LIBRARIES}
+            ${LCM_LIBRARIES}
     )
     if(NOT USE_CMAKE)
         if($ENV{ROS_DISTRO} MATCHES "noetic")

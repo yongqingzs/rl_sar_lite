@@ -1,0 +1,21 @@
+package exlcm;
+
+struct motor_data
+{
+    int64_t  timestamp;
+
+    float tor;      // 当前转矩
+    float spd;      // 当前速度
+    float pos;      // 当前位置
+    float temp;     // 当前温度
+    float spd_raw;
+    float ddq;
+    int16_t err;   // 错误代码
+    int16_t mode;
+}
+struct low_motor_state
+{
+    int64_t timestamp;
+    motor_data motors[12];
+    imu_state imu;  
+}

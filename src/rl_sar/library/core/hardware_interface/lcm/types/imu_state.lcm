@@ -1,0 +1,15 @@
+package exlcm;
+
+struct imu_state
+{
+    int64_t  timestamp;
+
+    float acc[3];
+    float gyro[3];
+    float mag[3];
+    float roll;
+    float pitch;
+    float yaw;
+    float quat[4];
+    float temp;
+}
