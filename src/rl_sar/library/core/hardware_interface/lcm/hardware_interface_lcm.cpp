@@ -6,13 +6,11 @@
 #include <iostream>
 #include <chrono>
 
-using namespace std::chrono;
-
 HardwareInterfaceLCM::HardwareInterfaceLCM()
     : running_(false)
     , ready_(false)
-    , state_topic_("/unitree_go/low_state")
-    , cmd_topic_("/unitree_go/low_cmd")
+    , state_topic_("/low_state")
+    , cmd_topic_("/low_cmd")
 {
     joint_positions_.resize(NUM_MOTORS, 0.0f);
     joint_velocities_.resize(NUM_MOTORS, 0.0f);
@@ -21,6 +19,18 @@ HardwareInterfaceLCM::HardwareInterfaceLCM()
     imu_gyroscope_.resize(3, 0.0f);
     imu_accelerometer_.resize(3, 0.0f);
     imu_quaternion_[0] = 1.0f;  // Initialize to identity quaternion
+    
+    // Initialize command message
+    current_cmd_.timestamp = 0;
+    for (int i = 0; i < NUM_MOTORS; ++i) {
+        current_cmd_.motors[i].timestamp = 0;
+        current_cmd_.motors[i].tor_des = 0.0f;
+        current_cmd_.motors[i].spd_des = 0.0f;
+        current_cmd_.motors[i].pos_des = 0.0f;
+        current_cmd_.motors[i].k_pos = 0.0f;
+        current_cmd_.motors[i].k_spd = 0.0f;
+        current_cmd_.motors[i].mode_set = 10;
+    }
 }
 
 HardwareInterfaceLCM::~HardwareInterfaceLCM() {
@@ -37,6 +47,10 @@ bool HardwareInterfaceLCM::Initialize() {
     // Subscribe to state topic
     lcm_->subscribe(state_topic_, &HardwareInterfaceLCM::lcmStateHandler, this);
     
+    // Create send loop (500Hz, same as free_dog_sdk)
+    send_loop_ = std::make_shared<LoopFunc>("LCM_Send", 0.002, 
+        std::bind(&HardwareInterfaceLCM::lcmSendLoop, this), 3);
+    
     std::cout << "[HardwareInterfaceLCM] Initialized successfully" << std::endl;
     std::cout << "[HardwareInterfaceLCM] State topic: " << state_topic_ << std::endl;
     std::cout << "[HardwareInterfaceLCM] Command topic: " << cmd_topic_ << std::endl;
@@ -52,6 +66,11 @@ void HardwareInterfaceLCM::Start() {
     
     running_ = true;
     lcm_thread_ = std::thread(&HardwareInterfaceLCM::lcmHandleLoop, this);
+    
+    // Start send loop
+    if (send_loop_) {
+        send_loop_->start();
+    }
     
     // Wait for first state message
     auto start = std::chrono::steady_clock::now();
@@ -74,6 +93,11 @@ void HardwareInterfaceLCM::Stop() {
     }
     
     running_ = false;
+    
+    // Stop send loop
+    if (send_loop_) {
+        send_loop_->shutdown();
+    }
     
     if (lcm_thread_.joinable()) {
         lcm_thread_.join();
@@ -109,50 +133,37 @@ void HardwareInterfaceLCM::SetCommand(const std::vector<float>& joint_positions,
                                       const std::vector<float>& joint_torques,
                                       const std::vector<float>& joint_kp,
                                       const std::vector<float>& joint_kd) {
-    if (!ready_ || !lcm_->good()) {
-        return;
-    }
-    
-    // For now, send a single unified command
-    // In a real implementation, you might send per-motor commands
-    exlcm::low_motor_ctrl cmd;
-    cmd.timestamp = getTimestampMs();
-    
-    // Use first motor values as example (modify as needed)
-    if (!joint_torques.empty()) {
-        cmd.tor_des = joint_torques[0];
-    } else {
-        cmd.tor_des = 0.0f;
-    }
-    
-    if (!joint_velocities.empty()) {
-        cmd.spd_des = joint_velocities[0];
-    } else {
-        cmd.spd_des = 0.0f;
-    }
-    
-    if (!joint_positions.empty()) {
-        cmd.pos_des = joint_positions[0];
-    } else {
-        cmd.pos_des = 0.0f;
-    }
-    
-    if (!joint_kp.empty()) {
-        cmd.k_pos = joint_kp[0];
-    } else {
-        cmd.k_pos = 1.0f;
-    }
-    
-    if (!joint_kd.empty()) {
-        cmd.k_spd = joint_kd[0];
-    } else {
-        cmd.k_spd = 0.1f;
-    }
-    
-    cmd.mode_set = 0;  // Default mode
-    
     std::lock_guard<std::mutex> lock(cmd_mutex_);
-    lcm_->publish(cmd_topic_, &cmd);
+    
+    int64_t timestamp = getTimestampMs();
+    current_cmd_.timestamp = timestamp;
+    
+    // Update all motor commands
+    for (int i = 0; i < NUM_MOTORS; ++i) {
+        current_cmd_.motors[i].timestamp = timestamp;
+        
+        if (i < static_cast<int>(joint_positions.size())) {
+            current_cmd_.motors[i].pos_des = joint_positions[i];
+        }
+        
+        if (i < static_cast<int>(joint_velocities.size())) {
+            current_cmd_.motors[i].spd_des = joint_velocities[i];
+        }
+        
+        if (i < static_cast<int>(joint_torques.size())) {
+            current_cmd_.motors[i].tor_des = joint_torques[i];
+        }
+        
+        if (i < static_cast<int>(joint_kp.size())) {
+            current_cmd_.motors[i].k_pos = joint_kp[i];
+        }
+        
+        if (i < static_cast<int>(joint_kd.size())) {
+            current_cmd_.motors[i].k_spd = joint_kd[i];
+        }
+        
+        current_cmd_.motors[i].mode_set = 10;  // Servo mode
+    }
 }
 
 bool HardwareInterfaceLCM::IsReady() const {
@@ -167,11 +178,10 @@ void HardwareInterfaceLCM::lcmHandleLoop() {
 
 void HardwareInterfaceLCM::lcmStateHandler(const lcm::ReceiveBuffer* /*rbuf*/,
                                            const std::string& /*chan*/,
-                                           const exlcm::low_motor_state* msg) {
+                                           const exlcm::low_state* msg) {
     std::lock_guard<std::mutex> lock(state_mutex_);
     
     // Parse motor states (assuming 12 motors from array)
-    // motors is a fixed-size array of motor_data
     for (int i = 0; i < NUM_MOTORS; ++i) {
         joint_positions_[i] = msg->motors[i].pos;
         joint_velocities_[i] = msg->motors[i].spd;
@@ -195,6 +205,18 @@ void HardwareInterfaceLCM::lcmStateHandler(const lcm::ReceiveBuffer* /*rbuf*/,
     ready_ = true;
 }
 
+void HardwareInterfaceLCM::lcmSendLoop() {
+    if (!lcm_->good() || !running_) {
+        return;
+    }
+    
+    std::lock_guard<std::mutex> lock(cmd_mutex_);
+    
+    // Publish the complete low_cmd message
+    lcm_->publish(cmd_topic_, &current_cmd_);
+}
+
 int64_t HardwareInterfaceLCM::getTimestampMs() const {
-    return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
 }

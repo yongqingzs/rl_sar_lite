@@ -1,0 +1,7 @@
+package exlcm;
+
+struct low_cmd
+{
+    int64_t timestamp;
+    motor_cmd motors[12];
+}

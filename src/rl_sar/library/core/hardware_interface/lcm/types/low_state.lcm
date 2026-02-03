@@ -1,0 +1,8 @@
+package exlcm;
+
+struct low_state
+{
+    int64_t timestamp;
+    motor_state motors[12];
+    imu_state imu;  
+}

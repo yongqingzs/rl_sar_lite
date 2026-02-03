@@ -1,6 +1,6 @@
 package exlcm;
 
-struct low_motor_ctrl
+struct motor_cmd
 {
     int64_t  timestamp;
 

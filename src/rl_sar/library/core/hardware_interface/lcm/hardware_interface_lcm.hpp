@@ -6,14 +6,15 @@
 #define HARDWARE_INTERFACE_LCM_HPP
 
 #include "../hardware_interface_base.hpp"
+#include "loop.hpp"
 #include <lcm/lcm-cpp.hpp>
 #include <memory>
 #include <thread>
 #include <atomic>
 #include <mutex>
 #include <vector>
-#include "types/exlcm/low_motor_state.hpp"
-#include "types/exlcm/low_motor_ctrl.hpp"
+#include "types/exlcm/low_state.hpp"
+#include "types/exlcm/low_cmd.hpp"
 
 class HardwareInterfaceLCM : public HardwareInterfaceBase {
 public:
@@ -41,12 +42,14 @@ public:
 
 private:
     void lcmHandleLoop();
+    void lcmSendLoop();
     void lcmStateHandler(const lcm::ReceiveBuffer* rbuf, 
                         const std::string& chan, 
-                        const exlcm::low_motor_state* msg);
+                        const exlcm::low_state* msg);
 
     std::unique_ptr<lcm::LCM> lcm_;
     std::thread lcm_thread_;
+    std::shared_ptr<LoopFunc> send_loop_;
     std::atomic<bool> running_;
     std::atomic<bool> ready_;
     
@@ -61,7 +64,7 @@ private:
     
     // Command data
     std::mutex cmd_mutex_;
-    exlcm::low_motor_ctrl current_cmd_;
+    exlcm::low_cmd current_cmd_;
     
     // Topics
     std::string state_topic_;

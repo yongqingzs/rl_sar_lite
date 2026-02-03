@@ -1,6 +1,6 @@
 package exlcm;
 
-struct motor_data
+struct motor_state
 {
     int64_t  timestamp;
 
@@ -12,10 +12,4 @@ struct motor_data
     float ddq;
     int16_t err;   // 错误代码
     int16_t mode;
-}
-struct low_motor_state
-{
-    int64_t timestamp;
-    motor_data motors[12];
-    imu_state imu;  
 }
