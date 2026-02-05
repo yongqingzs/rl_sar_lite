@@ -177,8 +177,18 @@ std::vector<float> RL::ComputeObservation()
             
             // 计算 commands 范数
             float commands_norm = std::sqrt(this->obs.commands[0]*this->obs.commands[0] + this->obs.commands[1]*this->obs.commands[1] + this->obs.commands[2]*this->obs.commands[2]);
-            float slow_factor = (commands_norm < 0.1f) ? 0.01f : 1.0f;
-            float phase = std::fmod(motion_time * slow_factor, cycle_time) / cycle_time;
+            
+            // 跟踪 commands 范数 < 0.1 的持续时间
+            if (commands_norm < 0.1f) {
+                this->low_command_time += dt;
+            } else {
+                this->low_command_time = 0.0f;
+            }
+            
+            // 当持续时间 > 0.2s 时，直接设置为 0.01，否则 1
+            this->current_slow_factor = (this->low_command_time > 0.1f) ? 0.01f : 1.0f;
+            
+            float phase = std::fmod(motion_time * this->current_slow_factor, cycle_time) / cycle_time;
 
             float sin_phase = std::sin(2.0f * 3.14159265f * phase);
             float cos_phase = std::cos(2.0f * 3.14159265f * phase);

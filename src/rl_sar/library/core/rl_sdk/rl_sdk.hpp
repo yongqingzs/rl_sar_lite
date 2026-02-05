@@ -259,6 +259,9 @@ public:
 
     // thread safety
     std::mutex model_mutex;
+
+    float current_slow_factor = 1.0f;  // 用于平滑 slow_factor 的成员变量
+    float low_command_time = 0.0f;  // 用于跟踪 commands 范数 < 0.1 的持续时间
 };
 
 class RLFSMState : public FSMState
