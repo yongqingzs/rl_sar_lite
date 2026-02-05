@@ -173,8 +173,13 @@ std::vector<float> RL::ComputeObservation()
             float dt = this->params.Get<float>("dt");
             int decimation = this->params.Get<int>("decimation");
             float motion_time = this->episode_length_buf * dt * decimation;
-            float phase = std::fmod(motion_time, cycle_time) / cycle_time;
+            // float phase = std::fmod(motion_time, cycle_time) / cycle_time;
             
+            // 计算 commands 范数
+            float commands_norm = std::sqrt(this->obs.commands[0]*this->obs.commands[0] + this->obs.commands[1]*this->obs.commands[1] + this->obs.commands[2]*this->obs.commands[2]);
+            float slow_factor = (commands_norm < 0.1f) ? 0.01f : 1.0f;
+            float phase = std::fmod(motion_time * slow_factor, cycle_time) / cycle_time;
+
             float sin_phase = std::sin(2.0f * 3.14159265f * phase);
             float cos_phase = std::cos(2.0f * 3.14159265f * phase);
             
